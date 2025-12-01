@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Readwise Inbox</title>
+    <style>
+        body {
+            font-family: serif;
+            margin: 1em;
+            line-height: 1.4;
+            font-size: 16px;
+            max-width: 600px;
+        }
+        h1 {
+            font-size: 1.5em;
+            margin-bottom: 0.5em;
+            border-bottom: 2px solid #333;
+            padding-bottom: 0.3em;
+        }
+        .article-list {
+            list-style: none;
+            padding: 0;
+        }
+        .article-item {
+            margin-bottom: 1.5em;
+            padding-bottom: 1em;
+            border-bottom: 1px solid #ddd;
+        }
+        .article-item:last-child {
+            border-bottom: none;
+        }
+        .article-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 0.3em;
+        }
+        .article-title a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .article-title a:visited {
+            color: #551a8b;
+        }
+        .article-meta {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 0.3em;
+        }
+        .article-summary {
+            font-size: 0.95em;
+            color: #333;
+        }
+        .empty-message {
+            text-align: center;
+            color: #666;
+            margin-top: 2em;
+        }
+        .count {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 1em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Readwise Inbox</h1>
+
+    {% if items %}
+        <p class="count">{{ items|length }} article{% if items|length != 1 %}s{% endif %}</p>
+        <ul class="article-list">
+            {% for item in items %}
+            <li class="article-item">
+                <div class="article-title">
+                    <a href="/read/{{ item.id }}">{{ item.title or "Untitled" }}</a>
+                </div>
+                <div class="article-meta">
+                    {% if item.author %}{{ item.author }} &middot; {% endif %}
+                    {{ item.source or "Unknown source" }}
+                    {% if item.word_count %} &middot; {{ item.word_count }} words{% endif %}
+                </div>
+                {% if item.summary %}
+                <div class="article-summary">{{ item.summary[:150] }}{% if item.summary|length > 150 %}...{% endif %}</div>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty-message">Your inbox is empty!</p>
+    {% endif %}
+</body>
+</html>
