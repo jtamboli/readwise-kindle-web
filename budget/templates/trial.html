@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calibration Trial</title>
+    <style>
+        body {
+            font-family: serif;
+            margin: 1em;
+            line-height: 1.5;
+            font-size: 16px;
+        }
+
+        nav {
+            margin-top: 2em;
+            padding-top: 1em;
+            border-top: 2px solid #333;
+            font-size: 0.9em;
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1em;
+        }
+
+        .nav-prev, .nav-next {
+            min-width: 80px;
+        }
+
+        .nav-prev {
+            text-align: left;
+        }
+
+        .nav-next {
+            text-align: right;
+        }
+
+        .page-info {
+            text-align: center;
+            color: #666;
+        }
+
+        .nav-actions {
+            margin-top: 1em;
+            text-align: center;
+        }
+
+        .meta {
+            font-size: 0.75em;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 0.5em;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+
+        h2, h3 {
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        p {
+            margin-bottom: 0.8em;
+        }
+
+        blockquote {
+            margin: 1em 0;
+            padding-left: 1em;
+            border-left: 3px solid #999;
+            color: #555;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 1em 0;
+        }
+
+        .feedback {
+            margin-top: 2em;
+            border-top: 2px solid #333;
+            padding-top: 1em;
+        }
+
+        .feedback a {
+            display: block;
+            padding: 1.2em;
+            margin: 0.7em 0;
+            background: #f0f0f0;
+            text-align: center;
+            text-decoration: none;
+            color: #000;
+            font-size: 1.1em;
+            border: 2px solid #999;
+        }
+
+        .feedback a:active {
+            background: #ddd;
+        }
+
+        .feedback-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 0.5em;
+        }
+
+        .status-link {
+            background: #e0e0ff !important;
+            margin-top: 1.5em;
+            font-size: 0.9em !important;
+        }
+    </style>
+</head>
+<body>
+    {{ content|safe }}
+
+    <nav>
+        <div class="nav-links">
+            <div class="nav-prev">&larr; Previous</div>
+            <div class="page-info">Page 1 of 3</div>
+            <div class="nav-next">Next &rarr;</div>
+        </div>
+        <div class="nav-actions">
+            Back to list &middot; Archive
+        </div>
+    </nav>
+
+    <div class="meta">
+        <strong>Phase:</strong> {{ phase|upper }}{% if testing %} (testing {{ testing }}){% endif %}
+        <br>
+        <strong>Target:</strong> {{ effective_size }} effective chars
+        <br>
+        <strong>Composition:</strong>
+        {{ chars }} chars,
+        {{ para }} paras,
+        {{ h2 }} H2,
+        {{ h3 }} H3,
+        {{ blockquote }} quotes,
+        {{ image }} images
+    </div>
+
+    <div class="feedback">
+        <div class="feedback-label">Did the CONTENT + NAVIGATION fit without scrolling?</div>
+
+        <a href="/feedback/{{ trial_id }}/too_big">
+            &#8597; Too Big<br>
+            <small>(had to scroll to see navigation links)</small>
+        </a>
+
+        <a href="/feedback/{{ trial_id }}/just_right">
+            &#10003; Just Right<br>
+            <small>(all content + nav visible, no scrolling)</small>
+        </a>
+
+        <a href="/feedback/{{ trial_id }}/too_small">
+            &#8596; Too Small<br>
+            <small>(extra white space below navigation)</small>
+        </a>
+
+        <a href="/status" class="status-link">
+            View Status Dashboard
+        </a>
+    </div>
+</body>
+</html>
