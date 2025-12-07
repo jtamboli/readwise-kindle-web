@@ -1,35 +1,62 @@
 """HTML pagination engine for Kindle display."""
 from typing import List, Tuple
 from bs4 import BeautifulSoup, Tag
-from app.config import Config
+from kindle_reader.config import Config
 
 
 # Block-level elements to paginate
 BLOCK_ELEMENTS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "ul", "ol", "img"]
 
+
+def calculate_effective_size(html_block: str) -> int:
+    """
+    Calculate effective size of an HTML block using compound cost model.
+
+    This uses the empirically-calibrated cost formula that accounts for
+    the vertical space taken by different HTML elements on Kindle.
+
+    Args:
+        html_block: String of HTML content
+
+    Returns:
+        Effective size (integer) representing vertical space consumption
+    """
+    soup = BeautifulSoup(html_block, "html.parser")
+
+    # Count raw characters (excluding HTML tags)
+    text_content = soup.get_text()
+    char_count = len(text_content)
+
+    # Count structural elements
+    para_count = len(soup.find_all("p"))
+    h2_count = len(soup.find_all("h2"))
+    h3_count = len(soup.find_all("h3"))
+    blockquote_count = len(soup.find_all("blockquote"))
+    image_count = len(soup.find_all("img"))
+
+    # Apply compound cost formula
+    effective_size = (
+        char_count
+        + (para_count * Config.KINDLE_COST_PARA)
+        + (h2_count * Config.KINDLE_COST_H2)
+        + (h3_count * Config.KINDLE_COST_H3)
+        + (blockquote_count * Config.KINDLE_COST_BLOCKQUOTE)
+        + (image_count * Config.KINDLE_COST_IMAGE)
+    )
+
+    return effective_size
+
 # Cache for paginated documents
 pagination_cache: dict[str, Tuple[List[str], int]] = {}
 
 
-def get_text_length(element: Tag) -> int:
-    """
-    Get the text length of an element.
-
-    Args:
-        element: BeautifulSoup Tag
-
-    Returns:
-        Character count of the element's text content
-    """
-    return len(element.get_text(strip=True))
-
-
 def paginate_html(html: str, doc_id: str) -> Tuple[List[str], int]:
     """
-    Paginate HTML content into Kindle-sized pages.
+    Paginate HTML content into Kindle-sized pages using calibrated effective size model.
 
-    Preserves block integrity - entire block-level elements are kept together
-    even if they exceed the character budget.
+    Uses compound cost formula that accounts for vertical space of different
+    HTML elements, not just character count. Preserves block integrity - entire
+    block-level elements are kept together even if they exceed the budget.
 
     Args:
         html: Sanitized HTML content
@@ -67,13 +94,15 @@ def paginate_html(html: str, doc_id: str) -> Tuple[List[str], int]:
             return empty_result
         blocks = [BeautifulSoup(f"<p>{content}</p>", "html.parser").p]
 
-    # Paginate blocks
+    # Paginate blocks using compound cost model
     pages: List[List[Tag]] = []
     current_page: List[Tag] = []
-    current_char_count = 0
+    current_size = 0
 
     for block in blocks:
-        block_length = get_text_length(block)
+        # Calculate effective size of this single block
+        block_html = str(block)
+        block_size = calculate_effective_size(block_html)
 
         # Handle images
         if block.name == "img":
@@ -82,7 +111,7 @@ def paginate_html(html: str, doc_id: str) -> Tuple[List[str], int]:
                 if current_page:
                     pages.append(current_page)
                     current_page = []
-                    current_char_count = 0
+                    current_size = 0
 
                 # Image on its own page
                 pages.append([block])
@@ -92,15 +121,15 @@ def paginate_html(html: str, doc_id: str) -> Tuple[List[str], int]:
                 pass
 
         # Check if adding this block would exceed budget
-        if current_char_count > 0 and current_char_count + block_length > Config.KINDLE_PAGE_CHAR_BUDGET:
-            # Start new page
+        if current_size > 0 and current_size + block_size > Config.KINDLE_PAGE_BUDGET:
+            # Start new page (only if current_page is not empty)
             pages.append(current_page)
             current_page = [block]
-            current_char_count = block_length
+            current_size = block_size
         else:
-            # Add to current page
+            # Add block to current page
             current_page.append(block)
-            current_char_count += block_length
+            current_size += block_size
 
     # Add final page
     if current_page:

@@ -1,16 +1,44 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"{% if is_dark %} class="dark"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
     <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --link-color: #0066cc;
+            --link-visited: #551a8b;
+            --link-hover: #004499;
+            --meta-color: #666666;
+            --border-color: #dddddd;
+            --border-dark: #333333;
+            --quote-color: #555555;
+            --quote-border: #cccccc;
+            --disabled-color: #cccccc;
+        }
+        :root.dark {
+            --bg-color: #1a1a1a;
+            --text-color: #e0e0e0;
+            --link-color: #6699ff;
+            --link-visited: #9999ff;
+            --link-hover: #88bbff;
+            --meta-color: #999999;
+            --border-color: #444444;
+            --border-dark: #888888;
+            --quote-color: #bbbbbb;
+            --quote-border: #666666;
+            --disabled-color: #555555;
+        }
         body {
             font-family: serif;
             margin: 1em;
             line-height: 1.4;
-            font-size: 16px;
+            font-size: 18px;
             max-width: 600px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
         }
         h1, h2, h3, h4, h5, h6 {
             line-height: 1.2;
@@ -38,8 +66,8 @@
         blockquote {
             margin: 1em 0;
             padding-left: 1em;
-            border-left: 3px solid #ccc;
-            color: #555;
+            border-left: 3px solid var(--quote-border);
+            color: var(--quote-color);
         }
         ul, ol {
             margin: 1em 0;
@@ -49,16 +77,16 @@
             margin-bottom: 0.5em;
         }
         a {
-            color: #0066cc;
+            color: var(--link-color);
             text-decoration: underline;
         }
         a:visited {
-            color: #551a8b;
+            color: var(--link-visited);
         }
         nav {
             margin-top: 2em;
             padding-top: 1em;
-            border-top: 2px solid #333;
+            border-top: 2px solid var(--border-dark);
             font-size: 0.9em;
         }
         .nav-links {
@@ -78,7 +106,7 @@
         }
         .page-info {
             text-align: center;
-            color: #666;
+            color: var(--meta-color);
         }
         .nav-actions {
             margin-top: 1em;
@@ -88,14 +116,14 @@
             margin: 0 0.5em;
         }
         .disabled {
-            color: #ccc;
+            color: var(--disabled-color);
             text-decoration: none;
             pointer-events: none;
         }
         .article-header {
             margin-bottom: 1.5em;
             padding-bottom: 0.5em;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid var(--border-color);
         }
         .article-title {
             font-size: 1.3em;
@@ -104,7 +132,7 @@
         }
         .article-meta {
             font-size: 0.9em;
-            color: #666;
+            color: var(--meta-color);
         }
         .archive-form {
             display: inline;
@@ -112,7 +140,7 @@
         .archive-button {
             background: none;
             border: none;
-            color: #0066cc;
+            color: var(--link-color);
             text-decoration: underline;
             cursor: pointer;
             font-size: inherit;
@@ -120,7 +148,7 @@
             padding: 0;
         }
         .archive-button:hover {
-            color: #004499;
+            color: var(--link-hover);
         }
     </style>
 </head>
@@ -144,7 +172,7 @@
         <div class="nav-links">
             <div class="nav-prev">
                 {% if page_num > 1 %}
-                <a href="/read/{{ doc_id }}/{{ page_num - 1 }}">&larr; Previous</a>
+                <a href="/kindle/read/{{ doc_id }}/{{ page_num - 1 }}">&larr; Previous</a>
                 {% else %}
                 <span class="disabled">&larr; Previous</span>
                 {% endif %}
@@ -154,16 +182,16 @@
             </div>
             <div class="nav-next">
                 {% if page_num < total_pages %}
-                <a href="/read/{{ doc_id }}/{{ page_num + 1 }}">Next &rarr;</a>
+                <a href="/kindle/read/{{ doc_id }}/{{ page_num + 1 }}">Next &rarr;</a>
                 {% else %}
                 <span class="disabled">Next &rarr;</span>
                 {% endif %}
             </div>
         </div>
         <div class="nav-actions">
-            <a href="/">Back to list</a>
+            <a href="/kindle/">Back to list</a>
             &middot;
-            <form class="archive-form" method="post" action="/archive/{{ doc_id }}">
+            <form class="archive-form" method="post" action="/kindle/archive/{{ doc_id }}">
                 <button type="submit" class="archive-button">Archive</button>
             </form>
         </div>

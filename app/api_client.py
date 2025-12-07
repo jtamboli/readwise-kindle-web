@@ -1,14 +1,30 @@
 """Async Readwise API client with caching."""
 import asyncio
+import logging
+import sys
 from typing import List, Dict, Optional
 import httpx
 from cachetools import TTLCache
-from app.config import Config
+from kindle_reader.config import Config
+
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO if Config.KINDLE_READWISE_VERBOSE else logging.WARNING,
+    format="[%(asctime)s] %(levelname)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stderr,
+)
+logger = logging.getLogger(__name__)
 
 
 # Two-tier caching
-list_cache = TTLCache(maxsize=1, ttl=Config.CACHE_LIST_TTL)
+# Support multiple location caches (shortlist, later, feed, etc.)
+list_cache = TTLCache(maxsize=10, ttl=Config.CACHE_LIST_TTL)
 document_cache: Dict[str, Dict] = {}  # No TTL, invalidated manually
+
+# Valid locations for the API
+VALID_LOCATIONS = {"new", "later", "shortlist", "archive", "feed"}
 
 
 class ReadwiseClient:
@@ -31,17 +47,24 @@ class ReadwiseClient:
         # Check cache
         cache_key = "inbox_list"
         if cache_key in list_cache:
+            logger.info("Loading inbox items from cache")
             return list_cache[cache_key]
 
-        # Fetch from API
+        logger.info("Fetching inbox items from Readwise API (Later library, max 100 items)")
+
+        # Fetch from API (limit to most recent 100 items to avoid rate limits)
         async with httpx.AsyncClient() as client:
             all_results = []
             next_cursor = None
+            max_items = 100
+            page_num = 1
 
-            while True:
-                params = {"location": "new"}
+            while len(all_results) < max_items:
+                params = {"location": "later"}
                 if next_cursor:
                     params["pageCursor"] = next_cursor
+
+                logger.info(f"  → API request: GET /list/ (page {page_num}, location=later)")
 
                 response = await client.get(
                     f"{self.base_url}/list/",
@@ -52,14 +75,86 @@ class ReadwiseClient:
                 response.raise_for_status()
 
                 data = response.json()
-                all_results.extend(data.get("results", []))
+                page_results = data.get("results", [])
+                all_results.extend(page_results)
+
+                logger.info(f"  ← Received {len(page_results)} items (total: {len(all_results)})")
 
                 next_cursor = data.get("nextPageCursor")
                 if not next_cursor:
                     break
 
+                page_num += 1
+
+            # Trim to max_items if we fetched more
+            all_results = all_results[:max_items]
+
             # Cache the results
             list_cache[cache_key] = all_results
+            logger.info(f"Cached {len(all_results)} inbox items")
+            return all_results
+
+    async def get_items_by_location(self, location: str, limit: int = 100) -> List[Dict]:
+        """
+        Fetch items from a specific location.
+
+        Args:
+            location: One of 'new', 'later', 'shortlist', 'archive', 'feed'
+            limit: Maximum number of items to fetch (default 100)
+
+        Returns:
+            List of document metadata dictionaries.
+        """
+        if location not in VALID_LOCATIONS:
+            raise ValueError(f"Invalid location: {location}. Must be one of {VALID_LOCATIONS}")
+
+        # Check cache
+        cache_key = f"list_{location}_{limit}"
+        if cache_key in list_cache:
+            logger.info(f"Loading {location} items from cache")
+            return list_cache[cache_key]
+
+        logger.info(f"Fetching {location} items from Readwise API (max {limit} items)")
+
+        # Fetch from API
+        async with httpx.AsyncClient() as client:
+            all_results = []
+            next_cursor = None
+            page_num = 1
+
+            while len(all_results) < limit:
+                params = {"location": location}
+                if next_cursor:
+                    params["pageCursor"] = next_cursor
+
+                logger.info(f"  → API request: GET /list/ (page {page_num}, location={location})")
+
+                response = await client.get(
+                    f"{self.base_url}/list/",
+                    headers=self.headers,
+                    params=params,
+                    timeout=30.0,
+                )
+                response.raise_for_status()
+
+                data = response.json()
+                page_results = data.get("results", [])
+                all_results.extend(page_results)
+
+                logger.info(f"  ← Received {len(page_results)} items (total: {len(all_results)})")
+
+                next_cursor = data.get("nextPageCursor")
+                if not next_cursor:
+                    break
+
+                page_num += 1
+
+            # Trim to limit if we fetched more
+            all_results = all_results[:limit]
+
+            # Cache the results
+            list_cache[cache_key] = all_results
+            logger.info(f"Cached {len(all_results)} {location} items")
             return all_results
 
     async def get_document(self, doc_id: str) -> Optional[Dict]:
@@ -74,11 +169,16 @@ class ReadwiseClient:
         """
         # Check cache
         if doc_id in document_cache:
+            logger.info(f"Loading document {doc_id} from cache")
             return document_cache[doc_id]
+
+        logger.info(f"Fetching document {doc_id} with HTML content from Readwise API")
 
         # Fetch from API
         async with httpx.AsyncClient() as client:
             params = {"id": doc_id, "withHtmlContent": "true"}
+
+            logger.info(f"  → API request: GET /list/ (id={doc_id}, withHtmlContent=true)")
 
             response = await client.get(
                 f"{self.base_url}/list/",
@@ -92,12 +192,18 @@ class ReadwiseClient:
             results = data.get("results", [])
 
             if not results:
+                logger.info(f"  ← Document {doc_id} not found")
                 return None
 
             document = results[0]
+            title = document.get("title", "Untitled")
+            html_length = len(document.get("html_content", ""))
+
+            logger.info(f"  ← Received document: '{title}' ({html_length} bytes HTML)")
 
             # Cache the document
             document_cache[doc_id] = document
+            logger.info(f"Cached document {doc_id}")
             return document
 
     async def update_reading_progress(self, doc_id: str, progress: float):
@@ -108,17 +214,24 @@ class ReadwiseClient:
             doc_id: Document ID
             progress: Reading progress (0.0 to 1.0)
         """
+        logger.info(f"Updating reading progress for document {doc_id} to {progress:.1%}")
+
         try:
             async with httpx.AsyncClient() as client:
-                await client.patch(
+                logger.info(f"  → API request: PATCH /update/{doc_id}/ (reading_progress={progress:.2f})")
+
+                response = await client.patch(
                     f"{self.base_url}/update/{doc_id}/",
                     headers=self.headers,
                     json={"reading_progress": progress},
                     timeout=10.0,
                 )
+                response.raise_for_status()
+
+                logger.info(f"  ← Progress updated successfully")
         except Exception as e:
             # Log error but don't raise (fire-and-forget)
-            print(f"Error updating reading progress for {doc_id}: {e}")
+            logger.warning(f"Error updating reading progress for {doc_id}: {e}")
 
     async def archive_document(self, doc_id: str):
         """
@@ -127,7 +240,11 @@ class ReadwiseClient:
         Args:
             doc_id: Document ID
         """
+        logger.info(f"Archiving document {doc_id}")
+
         async with httpx.AsyncClient() as client:
+            logger.info(f"  → API request: PATCH /update/{doc_id}/ (location=archive)")
+
             response = await client.patch(
                 f"{self.base_url}/update/{doc_id}/",
                 headers=self.headers,
@@ -136,20 +253,26 @@ class ReadwiseClient:
             )
             response.raise_for_status()
 
+            logger.info(f"  ← Document archived successfully")
+
         # Invalidate caches
         if doc_id in document_cache:
             del document_cache[doc_id]
+            logger.info(f"Invalidated document cache for {doc_id}")
 
         list_cache.clear()
+        logger.info("Invalidated inbox list cache")
 
     def invalidate_document_cache(self, doc_id: str):
         """Invalidate cached document."""
         if doc_id in document_cache:
             del document_cache[doc_id]
+            logger.info(f"Invalidated document cache for {doc_id}")
 
     def invalidate_list_cache(self):
         """Invalidate cached inbox list."""
         list_cache.clear()
+        logger.info("Invalidated inbox list cache")
 
 
 # Singleton instance

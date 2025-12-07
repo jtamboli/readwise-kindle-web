@@ -4,30 +4,38 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.api_client import client
-from app.sanitizer import sanitize_html
-from app.paginator import paginate_html
+from kindle_reader.api_client import client, VALID_LOCATIONS
+from kindle_reader.sanitizer import sanitize_html
+from kindle_reader.paginator import paginate_html
+from kindle_reader.sun_times import is_dark_mode
 
 app = FastAPI(title="Readwise Kindle Web Reader")
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory="/app/kindle_reader/templates")
 
 
 @app.get("/", response_class=HTMLResponse)
-async def list_inbox(request: Request):
+async def list_home(request: Request):
     """
-    Display list of inbox items.
+    Display home page with Shortlist and Later sections.
 
     Returns:
-        HTML page with inbox article list
+        HTML page with combined article lists
     """
     try:
-        items = await client.get_inbox_items()
+        is_dark = is_dark_mode()
+        shortlist_items = await client.get_items_by_location("shortlist", limit=5)
+        later_items = await client.get_items_by_location("later", limit=20)
         return templates.TemplateResponse(
             "list.html",
-            {"request": request, "items": items},
+            {
+                "request": request,
+                "shortlist_items": shortlist_items,
+                "later_items": later_items,
+                "is_dark": is_dark,
+            },
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching inbox: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching items: {str(e)}")
 
 
 @app.get("/read/{doc_id}", response_class=RedirectResponse)
@@ -41,7 +49,7 @@ async def read_redirect(doc_id: str):
     Returns:
         Redirect to page 1
     """
-    return RedirectResponse(url=f"/read/{doc_id}/1", status_code=302)
+    return RedirectResponse(url=f"/kindle/read/{doc_id}/1", status_code=302)
 
 
 @app.get("/read/{doc_id}/{page_num}", response_class=HTMLResponse)
@@ -87,6 +95,7 @@ async def read_page(request: Request, doc_id: str, page_num: int):
         asyncio.create_task(client.update_reading_progress(doc_id, progress))
 
         # Render page
+        is_dark = is_dark_mode()
         return templates.TemplateResponse(
             "page.html",
             {
@@ -98,6 +107,7 @@ async def read_page(request: Request, doc_id: str, page_num: int):
                 "content": page_content,
                 "page_num": page_num,
                 "total_pages": total_pages,
+                "is_dark": is_dark,
             },
         )
     except HTTPException:
@@ -119,9 +129,70 @@ async def archive(doc_id: str):
     """
     try:
         await client.archive_document(doc_id)
-        return RedirectResponse(url="/", status_code=303)
+        return RedirectResponse(url="/kindle/", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error archiving document: {str(e)}")
+
+
+@app.get("/list/{location}", response_class=HTMLResponse)
+async def list_by_location(request: Request, location: str):
+    """
+    Display list of items from a specific location.
+
+    Args:
+        location: One of 'shortlist', 'later', 'new', 'archive', 'feed'
+
+    Returns:
+        HTML page with article list
+    """
+    if location not in VALID_LOCATIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid location: {location}. Must be one of {', '.join(sorted(VALID_LOCATIONS))}"
+        )
+
+    try:
+        is_dark = is_dark_mode()
+        items = await client.get_items_by_location(location, limit=100)
+
+        # Capitalize location for display
+        display_name = location.capitalize()
+
+        return templates.TemplateResponse(
+            "list_single.html",
+            {
+                "request": request,
+                "items": items,
+                "list_name": display_name,
+                "is_dark": is_dark,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching {location} items: {str(e)}")
+
+
+@app.get("/feed", response_class=HTMLResponse)
+async def list_feed(request: Request):
+    """
+    Display list of feed items.
+
+    Returns:
+        HTML page with feed article list
+    """
+    try:
+        is_dark = is_dark_mode()
+        items = await client.get_items_by_location("feed", limit=100)
+        return templates.TemplateResponse(
+            "list_single.html",
+            {
+                "request": request,
+                "items": items,
+                "list_name": "Feed",
+                "is_dark": is_dark,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching feed items: {str(e)}")
 
 
 @app.get("/health")

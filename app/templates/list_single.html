@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Readwise Reader</title>
+    <title>{{ list_name }} - Readwise Reader</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -38,29 +38,16 @@
             border-bottom: 2px solid var(--border-dark);
             padding-bottom: 0.3em;
         }
-        h2 {
-            font-size: 1.3em;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-        }
-        h2 a {
-            color: var(--text-color);
-            text-decoration: none;
-        }
-        h2 a:hover {
-            text-decoration: underline;
-        }
-        .nav-links {
+        .back-link {
             margin-bottom: 1em;
             padding-bottom: 0.5em;
             border-bottom: 1px solid var(--border-color);
         }
-        .nav-links a {
+        .back-link a {
             color: var(--link-color);
             text-decoration: none;
-            margin-right: 1em;
         }
-        .nav-links a:visited {
+        .back-link a:visited {
             color: var(--link-visited);
         }
         .article-list {
@@ -101,46 +88,24 @@
             color: var(--meta-color);
             margin-top: 2em;
         }
-        .section-empty {
+        .count {
+            font-size: 0.9em;
             color: var(--meta-color);
-            font-style: italic;
+            margin-bottom: 1em;
         }
     </style>
 </head>
 <body>
-    <h1>Readwise Reader</h1>
-
-    <div class="nav-links">
-        <a href="/kindle/feed">Feed</a>
+    <div class="back-link">
+        <a href="/kindle/">&larr; Back to Home</a>
     </div>
 
-    <h2><a href="/kindle/list/shortlist">Shortlist</a></h2>
-    {% if shortlist_items %}
-        <ul class="article-list">
-            {% for item in shortlist_items %}
-            <li class="article-item">
-                <div class="article-title">
-                    <a href="/kindle/read/{{ item.id }}">{{ item.title or "Untitled" }}</a>
-                </div>
-                <div class="article-meta">
-                    {% if item.author %}{{ item.author }} &middot; {% endif %}
-                    {{ item.source or "Unknown source" }}
-                    {% if item.word_count %} &middot; {{ item.word_count }} words{% endif %}
-                </div>
-                {% if item.summary %}
-                <div class="article-summary">{{ item.summary[:150] }}{% if item.summary|length > 150 %}...{% endif %}</div>
-                {% endif %}
-            </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p class="section-empty">No items in Shortlist</p>
-    {% endif %}
+    <h1>{{ list_name }}</h1>
 
-    <h2><a href="/kindle/list/later">Later</a></h2>
-    {% if later_items %}
+    {% if items %}
+        <p class="count">{{ items|length }} article{% if items|length != 1 %}s{% endif %}</p>
         <ul class="article-list">
-            {% for item in later_items %}
+            {% for item in items %}
             <li class="article-item">
                 <div class="article-title">
                     <a href="/kindle/read/{{ item.id }}">{{ item.title or "Untitled" }}</a>
@@ -157,7 +122,7 @@
             {% endfor %}
         </ul>
     {% else %}
-        <p class="section-empty">No items in Later</p>
+        <p class="empty-message">No items in {{ list_name }}</p>
     {% endif %}
 </body>
 </html>
