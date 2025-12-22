@@ -1,13 +1,15 @@
 """FastAPI application for Readwise Kindle web reader."""
 import asyncio
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from kindle_reader.api_client import client, VALID_LOCATIONS
 from kindle_reader.sanitizer import sanitize_html
-from kindle_reader.paginator import paginate_html
 from kindle_reader.sun_times import is_dark_mode
+
+# 1x1 transparent GIF for progress tracking beacon
+TRANSPARENT_GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
 
 app = FastAPI(title="Readwise Kindle Web Reader")
 templates = Jinja2Templates(directory="/app/kindle_reader/templates")
@@ -38,31 +40,16 @@ async def list_home(request: Request):
         raise HTTPException(status_code=500, detail=f"Error fetching items: {str(e)}")
 
 
-@app.get("/read/{doc_id}", response_class=RedirectResponse)
-async def read_redirect(doc_id: str):
+@app.get("/read/{doc_id}", response_class=HTMLResponse)
+async def read_article(request: Request, doc_id: str):
     """
-    Redirect to first page of document.
+    Display a full article with JS tap-zone scrolling.
 
     Args:
         doc_id: Document ID
 
     Returns:
-        Redirect to page 1
-    """
-    return RedirectResponse(url=f"/kindle/read/{doc_id}/1", status_code=302)
-
-
-@app.get("/read/{doc_id}/{page_num}", response_class=HTMLResponse)
-async def read_page(request: Request, doc_id: str, page_num: int):
-    """
-    Display a single page of a document.
-
-    Args:
-        doc_id: Document ID
-        page_num: Page number (1-indexed)
-
-    Returns:
-        HTML page with document content and navigation
+        HTML page with full article content
     """
     try:
         # Fetch document
@@ -78,22 +65,6 @@ async def read_page(request: Request, doc_id: str, page_num: int):
         # Sanitize HTML
         clean_html = sanitize_html(html_content)
 
-        # Paginate
-        pages, total_pages = paginate_html(clean_html, doc_id)
-
-        # Validate page number
-        if page_num < 1 or page_num > total_pages:
-            raise HTTPException(
-                status_code=404, detail=f"Page {page_num} not found (total: {total_pages})"
-            )
-
-        # Get page content (convert to 0-indexed)
-        page_content = pages[page_num - 1]
-
-        # Calculate and update reading progress (fire-and-forget)
-        progress = page_num / total_pages
-        asyncio.create_task(client.update_reading_progress(doc_id, progress))
-
         # Render page
         is_dark = is_dark_mode()
         return templates.TemplateResponse(
@@ -104,16 +75,31 @@ async def read_page(request: Request, doc_id: str, page_num: int):
                 "title": document.get("title", "Untitled"),
                 "author": document.get("author"),
                 "source": document.get("source"),
-                "content": page_content,
-                "page_num": page_num,
-                "total_pages": total_pages,
+                "content": clean_html,
                 "is_dark": is_dark,
             },
         )
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error rendering page: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error rendering article: {str(e)}")
+
+
+@app.get("/progress/{doc_id}")
+async def update_progress(doc_id: str, p: float = 0):
+    """
+    Update reading progress via JS beacon.
+
+    Args:
+        doc_id: Document ID
+        p: Progress as float 0-1
+
+    Returns:
+        1x1 transparent GIF
+    """
+    progress = min(1.0, max(0.0, p))
+    asyncio.create_task(client.update_reading_progress(doc_id, progress))
+    return Response(content=TRANSPARENT_GIF, media_type="image/gif")
 
 
 @app.post("/archive/{doc_id}", response_class=RedirectResponse)

@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #ffffff;
@@ -32,13 +35,27 @@
             --disabled-color: #555555;
         }
         body {
-            font-family: serif;
+            font-family: "Merriweather", Georgia, serif;
             margin: 1em;
-            line-height: 1.4;
+            line-height: 1.5;
             font-size: 18px;
             max-width: 600px;
             background-color: var(--bg-color);
             color: var(--text-color);
+        }
+        .zone-left {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 20%;
+        }
+        .zone-right {
+            position: fixed;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 80%;
         }
         h1, h2, h3, h4, h5, h6 {
             line-height: 1.2;
@@ -83,42 +100,15 @@
         a:visited {
             color: var(--link-visited);
         }
-        nav {
-            margin-top: 2em;
+        .article-footer {
+            margin-top: 3em;
             padding-top: 1em;
             border-top: 2px solid var(--border-dark);
+            text-align: center;
             font-size: 0.9em;
         }
-        .nav-links {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1em;
-        }
-        .nav-prev, .nav-next {
-            min-width: 80px;
-        }
-        .nav-prev {
-            text-align: left;
-        }
-        .nav-next {
-            text-align: right;
-        }
-        .page-info {
-            text-align: center;
-            color: var(--meta-color);
-        }
-        .nav-actions {
-            margin-top: 1em;
-            text-align: center;
-        }
-        .nav-actions a {
+        .article-footer a {
             margin: 0 0.5em;
-        }
-        .disabled {
-            color: var(--disabled-color);
-            text-decoration: none;
-            pointer-events: none;
         }
         .article-header {
             margin-bottom: 1.5em;
@@ -153,6 +143,9 @@
     </style>
 </head>
 <body>
+    <div class="zone-left" onclick="window.scrollBy(0, -window.innerHeight * 0.9)"></div>
+    <div class="zone-right" onclick="window.scrollBy(0, window.innerHeight * 0.9)"></div>
+
     <div class="article-header">
         <div class="article-title">{{ title }}</div>
         {% if author or source %}
@@ -168,33 +161,19 @@
         {{ content|safe }}
     </div>
 
-    <nav>
-        <div class="nav-links">
-            <div class="nav-prev">
-                {% if page_num > 1 %}
-                <a href="/kindle/read/{{ doc_id }}/{{ page_num - 1 }}">&larr; Previous</a>
-                {% else %}
-                <span class="disabled">&larr; Previous</span>
-                {% endif %}
-            </div>
-            <div class="page-info">
-                Page {{ page_num }} of {{ total_pages }}
-            </div>
-            <div class="nav-next">
-                {% if page_num < total_pages %}
-                <a href="/kindle/read/{{ doc_id }}/{{ page_num + 1 }}">Next &rarr;</a>
-                {% else %}
-                <span class="disabled">Next &rarr;</span>
-                {% endif %}
-            </div>
-        </div>
-        <div class="nav-actions">
-            <a href="/kindle/">Back to list</a>
-            &middot;
-            <form class="archive-form" method="post" action="/kindle/archive/{{ doc_id }}">
-                <button type="submit" class="archive-button">Archive</button>
-            </form>
-        </div>
-    </nav>
+    <div class="article-footer">
+        <a href="/kindle/">Back to list</a>
+        &middot;
+        <form class="archive-form" method="post" action="/kindle/archive/{{ doc_id }}">
+            <button type="submit" class="archive-button">Archive</button>
+        </form>
+    </div>
+
+    <script>
+    setInterval(function() {
+        var p = window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
+        new Image().src = '/kindle/progress/{{ doc_id }}?p=' + Math.min(1, p).toFixed(2);
+    }, 30000);
+    </script>
 </body>
 </html>
