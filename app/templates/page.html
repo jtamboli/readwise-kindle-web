@@ -49,6 +49,7 @@
             top: 0;
             bottom: 0;
             width: 20%;
+            z-index: 1;
         }
         .zone-right {
             position: fixed;
@@ -56,6 +57,7 @@
             top: 0;
             bottom: 0;
             width: 80%;
+            z-index: 1;
         }
         h1, h2, h3, h4, h5, h6 {
             line-height: 1.2;
@@ -101,6 +103,8 @@
             color: var(--link-visited);
         }
         .article-footer {
+            position: relative;
+            z-index: 10;
             margin-top: 3em;
             padding-top: 1em;
             border-top: 2px solid var(--border-dark);
