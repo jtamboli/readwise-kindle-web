@@ -3,21 +3,43 @@ import bleach
 
 # Allowed HTML tags for Kindle compatibility
 ALLOWED_TAGS = [
-    "p",
+    # Headings
     "h1",
     "h2",
     "h3",
     "h4",
     "h5",
     "h6",
+    # Block elements
+    "p",
     "blockquote",
+    "pre",
+    "hr",
+    # Lists
     "ul",
     "ol",
     "li",
+    # Tables
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    # Inline formatting
     "a",
     "em",
+    "i",
     "strong",
+    "b",
+    "code",
+    "sup",
+    "sub",
+    # Media
     "img",
+    "figure",
+    "figcaption",
+    # Misc
     "br",
 ]
 

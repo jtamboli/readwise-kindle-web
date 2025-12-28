@@ -115,6 +115,7 @@
 
     <div class="nav-links">
         <a href="/kindle/feed">Feed</a>
+        <a href="#later">Later</a>
     </div>
 
     <h2><a href="/kindle/list/shortlist">Shortlist</a></h2>
@@ -140,7 +141,7 @@
         <p class="section-empty">No items in Shortlist</p>
     {% endif %}
 
-    <h2><a href="/kindle/list/later">Later</a></h2>
+    <h2 id="later"><a href="/kindle/list/later">Later</a></h2>
     {% if later_items %}
         <ul class="article-list">
             {% for item in later_items %}

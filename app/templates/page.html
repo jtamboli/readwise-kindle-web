@@ -95,6 +95,70 @@
         li {
             margin-bottom: 0.5em;
         }
+        pre {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.85em;
+            background-color: var(--border-color);
+            padding: 1em;
+            margin: 1em 0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.9em;
+            background-color: var(--border-color);
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            font-size: inherit;
+        }
+        figure {
+            margin: 1em 0;
+            padding: 0;
+        }
+        figcaption {
+            font-size: 0.85em;
+            color: var(--meta-color);
+            margin-top: 0.5em;
+            font-style: italic;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 2em 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+            font-size: 0.9em;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 0.5em;
+            text-align: left;
+        }
+        th {
+            background-color: var(--border-color);
+            font-weight: bold;
+        }
+        sup, sub {
+            font-size: 0.75em;
+            line-height: 0;
+            position: relative;
+            vertical-align: baseline;
+        }
+        sup {
+            top: -0.5em;
+        }
+        sub {
+            bottom: -0.25em;
+        }
         a {
             color: var(--link-color);
             text-decoration: underline;
