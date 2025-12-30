@@ -1,5 +1,6 @@
 """FastAPI application for Readwise Kindle web reader."""
 import asyncio
+from typing import List, Dict
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -15,6 +16,26 @@ app = FastAPI(title="Readwise Kindle Web Reader")
 templates = Jinja2Templates(directory="/app/kindle_reader/templates")
 
 
+def sort_by_recent_activity(items: List[Dict]) -> List[Dict]:
+    """
+    Sort items by last_opened_at (most recent first), falling back to last_moved_at.
+
+    For each item, uses last_opened_at if available, otherwise falls back to last_moved_at.
+    All items are then sorted together by their respective timestamps in descending order.
+
+    Args:
+        items: List of document dictionaries
+
+    Returns:
+        Sorted list of documents
+    """
+    def sort_key(item):
+        # Use last_opened_at if available, otherwise fall back to last_moved_at
+        return item.get("last_opened_at") or item.get("last_moved_at", "")
+
+    return sorted(items, key=sort_key, reverse=True)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def list_home(request: Request):
     """
@@ -27,6 +48,11 @@ async def list_home(request: Request):
         is_dark = is_dark_mode()
         shortlist_items = await client.get_items_by_location("shortlist", limit=5)
         later_items = await client.get_items_by_location("later", limit=20)
+
+        # Sort by recent activity (last_opened_at with fallback to last_moved_at)
+        shortlist_items = sort_by_recent_activity(shortlist_items)
+        later_items = sort_by_recent_activity(later_items)
+
         return templates.TemplateResponse(
             "list.html",
             {
@@ -141,6 +167,9 @@ async def list_by_location(request: Request, location: str):
         is_dark = is_dark_mode()
         items = await client.get_items_by_location(location, limit=100)
 
+        # Sort by recent activity (last_opened_at with fallback to last_moved_at)
+        items = sort_by_recent_activity(items)
+
         # Capitalize location for display
         display_name = location.capitalize()
 
@@ -168,6 +197,10 @@ async def list_feed(request: Request):
     try:
         is_dark = is_dark_mode()
         items = await client.get_items_by_location("feed", limit=100)
+
+        # Sort by recent activity (last_opened_at with fallback to last_moved_at)
+        items = sort_by_recent_activity(items)
+
         return templates.TemplateResponse(
             "list_single.html",
             {

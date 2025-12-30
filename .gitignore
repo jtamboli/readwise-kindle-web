@@ -27,4 +27,10 @@ Thumbs.db
 readwise.json
 
 # Claude
-.claude/settings.local.json
+.claude/
+**/.claude/
+
+# Sensitive/generated files
+readwise-excerpt.json
+repomix-output.xml
+*.backup_*
