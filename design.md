@@ -9,8 +9,8 @@ Python with Flask or FastAPI. Single-user, no auth UI needed — just configure 
 ### Data Flow
 
 1. Server fetches items from Readwise Reader API on demand (with reasonable caching to avoid hammering the API)
-1. For article content, server parses and sanitizes HTML, then paginates into chunks
-1. Each page render updates reading progress via API call
+1. For article content, server parses and sanitizes HTML
+1. Each article view updates reading progress via API call
 
 ### Routes
 
@@ -18,33 +18,28 @@ Python with Flask or FastAPI. Single-user, no auth UI needed — just configure 
 GET /
     List view of inbox items (title, source, maybe first line)
     Each item links to /read/<document_id>
-    
+
 GET /read/<document_id>
-    Redirects to /read/<document_id>/1 (first page)
-    
-GET /read/<document_id>/<page_num>
-    Renders one page of content
-    Shows page N of M, prev/next links
-    On load, PUTs reading progress to Readwise API (page_num / total_pages)
-    
+    Renders full article with tap-zone navigation
+    On load, PUTs reading progress to Readwise API
+
 POST /archive/<document_id>
     Archives the item via API
     Redirects to / (or to next unread item, your preference)
 ```
 
-### Pagination Logic
+### Navigation
 
-Preprocessor that takes sanitized HTML and splits into pages:
+Articles are displayed as a single scrollable page with tap-zone navigation:
 
 1. Parse HTML into block-level elements (p, h1-h6, blockquote, ul/ol, img, etc.)
-1. Walk blocks, accumulating into current page
-1. For text blocks: add to page if cumulative character count stays under budget; otherwise start new page
-1. For images: close current page, put image on its own page (or image + following paragraph if you want)
-1. Store paginated output in memory or cache, keyed by document ID
+1. Render entire article in a single page
+1. Use CSS to create left/right tap zones for smooth scrolling
+1. Store sanitized HTML in memory or cache, keyed by document ID
 
 ### HTML Output
 
-Minimal markup. Something like:
+Minimal markup with tap-zone navigation:
 
 ```
 <html>
@@ -53,14 +48,17 @@ Minimal markup. Something like:
     <style>
         body { font-family: serif; margin: 1em; line-height: 1.4; }
         img { max-width: 100%; }
+        .tap-zone { position: fixed; top: 0; bottom: 0; width: 40%; cursor: pointer; }
+        .tap-zone.left { left: 0; }
+        .tap-zone.right { right: 0; }
         nav { margin-top: 1em; }
     </style>
 </head>
 <body>
     [content blocks]
+    <div class="tap-zone left" onclick="scroll up"></div>
+    <div class="tap-zone right" onclick="scroll down"></div>
     <nav>
-        <a href="prev">← Prev</a> | Page 3 of 12 | <a href="next">Next →</a>
-        <br>
         <a href="/archive/doc_id">Archive</a> | <a href="/">Back to list</a>
     </nav>
 </body>
@@ -78,23 +76,18 @@ Use something like `bleach` or `html-sanitizer` to strip the Readwise Reader HTM
 Two levels:
 
 1. **Item list**: cache for a few minutes, refresh on explicit reload or after archiving
-1. **Document content + pagination**: cache until archived or explicitly invalidated (content doesn’t change)
+1. **Document content**: cache until archived or explicitly invalidated (content doesn't change)
 
-In-memory dict is fine for personal use; you’re not dealing with scale concerns.
+In-memory dict is fine for personal use; you're not dealing with scale concerns.
 
 ### Configuration
 
 ```
 READWISE_API_TOKEN=xxx
-PAGE_CHAR_BUDGET=1800  # tune empirically
-IMAGE_SEPARATE_PAGE=true
 HOST=0.0.0.0
 PORT=5000
+CACHE_LIST_TTL=300
 ```
-
-### Determining Your Page Budget
-
-Make a test route that renders Lorem Ipsum at various character counts (1000, 1500, 1800, 2000, 2500). Load each on your Kindle, note which fits comfortably without scrolling, use that as your budget. Do the same with a page containing one image to decide how to handle image pages.
 
 -----
 
