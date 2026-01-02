@@ -37,63 +37,6 @@ class ReadwiseClient:
             "Content-Type": "application/json",
         }
 
-    async def get_inbox_items(self) -> List[Dict]:
-        """
-        Fetch inbox items from Readwise Reader API.
-
-        Returns:
-            List of document metadata dictionaries.
-        """
-        # Check cache
-        cache_key = "inbox_list"
-        if cache_key in list_cache:
-            logger.info("Loading inbox items from cache")
-            return list_cache[cache_key]
-
-        logger.info("Fetching inbox items from Readwise API (Later library, max 100 items)")
-
-        # Fetch from API (limit to most recent 100 items to avoid rate limits)
-        async with httpx.AsyncClient() as client:
-            all_results = []
-            next_cursor = None
-            max_items = 100
-            page_num = 1
-
-            while len(all_results) < max_items:
-                params = {"location": "later"}
-                if next_cursor:
-                    params["pageCursor"] = next_cursor
-
-                logger.info(f"  → API request: GET /list/ (page {page_num}, location=later)")
-
-                response = await client.get(
-                    f"{self.base_url}/list/",
-                    headers=self.headers,
-                    params=params,
-                    timeout=30.0,
-                )
-                response.raise_for_status()
-
-                data = response.json()
-                page_results = data.get("results", [])
-                all_results.extend(page_results)
-
-                logger.info(f"  ← Received {len(page_results)} items (total: {len(all_results)})")
-
-                next_cursor = data.get("nextPageCursor")
-                if not next_cursor:
-                    break
-
-                page_num += 1
-
-            # Trim to max_items if we fetched more
-            all_results = all_results[:max_items]
-
-            # Cache the results
-            list_cache[cache_key] = all_results
-            logger.info(f"Cached {len(all_results)} inbox items")
-            return all_results
-
     async def get_items_by_location(self, location: str, limit: int = 100) -> List[Dict]:
         """
         Fetch items from a specific location.
@@ -256,12 +199,8 @@ class ReadwiseClient:
             logger.info(f"  ← Document archived successfully")
 
         # Invalidate caches
-        if doc_id in document_cache:
-            del document_cache[doc_id]
-            logger.info(f"Invalidated document cache for {doc_id}")
-
-        list_cache.clear()
-        logger.info("Invalidated inbox list cache")
+        self.invalidate_document_cache(doc_id)
+        self.invalidate_list_cache()
 
     def invalidate_document_cache(self, doc_id: str):
         """Invalidate cached document."""
