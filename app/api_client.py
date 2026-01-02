@@ -37,63 +37,6 @@ class ReadwiseClient:
             "Content-Type": "application/json",
         }
 
-    async def get_inbox_items(self) -> List[Dict]:
-        """
-        Fetch inbox items from Readwise Reader API.
-
-        Returns:
-            List of document metadata dictionaries.
-        """
-        # Check cache
-        cache_key = "inbox_list"
-        if cache_key in list_cache:
-            logger.info("Loading inbox items from cache")
-            return list_cache[cache_key]
-
-        logger.info("Fetching inbox items from Readwise API (Later library, max 100 items)")
-
-        # Fetch from API (limit to most recent 100 items to avoid rate limits)
-        async with httpx.AsyncClient() as client:
-            all_results = []
-            next_cursor = None
-            max_items = 100
-            page_num = 1
-
-            while len(all_results) < max_items:
-                params = {"location": "later"}
-                if next_cursor:
-                    params["pageCursor"] = next_cursor
-
-                logger.info(f"  → API request: GET /list/ (page {page_num}, location=later)")
-
-                response = await client.get(
-                    f"{self.base_url}/list/",
-                    headers=self.headers,
-                    params=params,
-                    timeout=30.0,
-                )
-                response.raise_for_status()
-
-                data = response.json()
-                page_results = data.get("results", [])
-                all_results.extend(page_results)
-
-                logger.info(f"  ← Received {len(page_results)} items (total: {len(all_results)})")
-
-                next_cursor = data.get("nextPageCursor")
-                if not next_cursor:
-                    break
-
-                page_num += 1
-
-            # Trim to max_items if we fetched more
-            all_results = all_results[:max_items]
-
-            # Cache the results
-            list_cache[cache_key] = all_results
-            logger.info(f"Cached {len(all_results)} inbox items")
-            return all_results
-
     async def get_items_by_location(self, location: str, limit: int = 100) -> List[Dict]:
         """
         Fetch items from a specific location.
@@ -256,12 +199,8 @@ class ReadwiseClient:
             logger.info(f"  ← Document archived successfully")
 
         # Invalidate caches
-        if doc_id in document_cache:
-            del document_cache[doc_id]
-            logger.info(f"Invalidated document cache for {doc_id}")
-
-        list_cache.clear()
-        logger.info("Invalidated inbox list cache")
+        self.invalidate_document_cache(doc_id)
+        self.invalidate_list_cache()
 
     def invalidate_document_cache(self, doc_id: str):
         """Invalidate cached document."""
@@ -273,6 +212,52 @@ class ReadwiseClient:
         """Invalidate cached inbox list."""
         list_cache.clear()
         logger.info("Invalidated inbox list cache")
+
+    async def get_library_articles(self, limit_per_location: int = 100) -> List[Dict]:
+        """
+        Fetch articles from library locations (later and shortlist).
+        Used for tag aggregation and filtering.
+
+        Args:
+            limit_per_location: Maximum number of items to fetch per location
+
+        Returns:
+            List of article metadata dictionaries from library locations.
+        """
+        # Only fetch from later and shortlist locations
+        active_locations = {"later", "shortlist"}
+
+        # Check cache
+        cache_key = f"library_articles_{limit_per_location}"
+        if cache_key in list_cache:
+            logger.info("Loading library articles from cache")
+            return list_cache[cache_key]
+
+        logger.info("Fetching articles from library locations for tags (later, shortlist)")
+
+        # Fetch from active locations
+        all_articles = []
+        for location in active_locations:
+            try:
+                items = await self.get_items_by_location(location, limit=limit_per_location)
+                all_articles.extend(items)
+            except Exception as e:
+                logger.warning(f"Error fetching {location} items: {e}")
+                continue
+
+        # Remove duplicates by ID (in case an article appears in multiple locations)
+        seen_ids = set()
+        unique_articles = []
+        for article in all_articles:
+            article_id = article.get("id")
+            if article_id and article_id not in seen_ids:
+                seen_ids.add(article_id)
+                unique_articles.append(article)
+
+        # Cache the results
+        list_cache[cache_key] = unique_articles
+        logger.info(f"Cached {len(unique_articles)} unique articles")
+        return unique_articles
 
 
 # Singleton instance

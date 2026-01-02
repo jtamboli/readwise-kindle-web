@@ -240,6 +240,100 @@ async def list_feed(request: Request):
         raise HTTPException(status_code=500, detail=f"Error fetching feed items: {str(e)}")
 
 
+@app.get("/tags", response_class=HTMLResponse)
+async def list_tags(request: Request):
+    """
+    Display list of all tags sorted by article count.
+
+    Returns:
+        HTML page with tag list
+    """
+    try:
+        is_dark = is_dark_mode()
+
+        # Get library articles to extract tags
+        all_articles = await client.get_library_articles(limit_per_location=100)
+
+        # Count tags
+        tag_counts = {}
+        for article in all_articles:
+            article_tags = article.get("tags", {})
+            # Tags can be a dict with tag names as keys or a list
+            if isinstance(article_tags, dict):
+                tag_names = list(article_tags.keys())
+            elif isinstance(article_tags, list):
+                tag_names = article_tags
+            else:
+                tag_names = []
+
+            for tag_name in tag_names:
+                if tag_name:  # Skip empty tags
+                    tag_counts[tag_name] = tag_counts.get(tag_name, 0) + 1
+
+        # Convert to list of dicts and sort by count (descending)
+        tags = [{"name": name, "count": count} for name, count in tag_counts.items()]
+        tags.sort(key=lambda x: x["count"], reverse=True)
+
+        return templates.TemplateResponse(
+            "tags.html",
+            {
+                "request": request,
+                "tags": tags,
+                "is_dark": is_dark,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching tags: {str(e)}")
+
+
+@app.get("/tags/{tag_name}", response_class=HTMLResponse)
+async def list_articles_by_tag(request: Request, tag_name: str):
+    """
+    Display list of articles with a specific tag.
+
+    Args:
+        tag_name: Name of the tag to filter by
+
+    Returns:
+        HTML page with filtered article list
+    """
+    try:
+        is_dark = is_dark_mode()
+
+        # Get library articles and filter by tag
+        all_articles = await client.get_library_articles(limit_per_location=100)
+
+        # Filter articles that have the specified tag
+        filtered_items = []
+        for article in all_articles:
+            article_tags = article.get("tags", {})
+            # Tags can be a dict with tag names as keys or a list
+            if isinstance(article_tags, dict):
+                tag_names = list(article_tags.keys())
+            elif isinstance(article_tags, list):
+                tag_names = article_tags
+            else:
+                tag_names = []
+
+            if tag_name in tag_names:
+                filtered_items.append(article)
+
+        # Sort by recent activity
+        filtered_items = sort_by_recent_activity(filtered_items)
+
+        return templates.TemplateResponse(
+            "list_single.html",
+            {
+                "request": request,
+                "items": filtered_items,
+                "list_name": f"Tag: {tag_name}",
+                "is_dark": is_dark,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching articles for tag '{tag_name}': {str(e)}")
+
+
 @app.get("/refresh", response_class=RedirectResponse)
 async def refresh_cache():
     """
