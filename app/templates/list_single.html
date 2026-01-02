@@ -10,21 +10,21 @@
     <style>
         :root {
             --bg-color: #ffffff;
-            --text-color: #333333;
-            --link-color: #0066cc;
-            --link-visited: #551a8b;
+            --text-color: #000000;
+            --link-color: #000000;
+            --link-visited: #000000;
             --meta-color: #666666;
             --border-color: #dddddd;
-            --border-dark: #333333;
+            --border-dark: #000000;
         }
         :root.dark {
-            --bg-color: #1a1a1a;
-            --text-color: #e0e0e0;
-            --link-color: #6699ff;
-            --link-visited: #9999ff;
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --link-color: #ffffff;
+            --link-visited: #ffffff;
             --meta-color: #999999;
             --border-color: #444444;
-            --border-dark: #888888;
+            --border-dark: #ffffff;
         }
         body {
             font-family: "Merriweather", Georgia, serif;
@@ -34,6 +34,15 @@
             max-width: 600px;
             background-color: var(--bg-color);
             color: var(--text-color);
+            /* E-ink optimizations */
+            text-align: justify;
+            hyphens: auto;
+            -webkit-hyphens: auto;
+            text-justify: inter-word;
+            letter-spacing: 0.015em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
         h1 {
             font-size: 1.5em;
