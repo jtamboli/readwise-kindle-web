@@ -211,8 +211,8 @@
     </style>
 </head>
 <body>
-    <div class="zone-left" onclick="window.scrollBy(0, -window.innerHeight * 0.9)"></div>
-    <div class="zone-right" onclick="window.scrollBy(0, window.innerHeight * 0.9)"></div>
+    <div class="zone-left" onclick="handleScroll(-window.innerHeight * 0.9)"></div>
+    <div class="zone-right" onclick="handleScroll(window.innerHeight * 0.9)"></div>
 
     <div class="article-header">
         <div class="article-title">{{ title }}</div>
@@ -238,6 +238,57 @@
     </div>
 
     <script>
+    // E-ink screen refresh logic
+    // Kindle does full refresh every 5-6 page turns to clear ghosting
+    // Less frequent in dark mode since dark backgrounds show less ghosting
+    var isDarkMode = document.documentElement.classList.contains('dark');
+    var REFRESH_INTERVAL = isDarkMode ? 8 : 6;
+
+    function flashScreen() {
+        // Save current colors
+        var originalBg = document.body.style.backgroundColor;
+        var originalColor = document.body.style.color;
+
+        // Flash sequence: white -> black -> restore
+        // In dark mode: black -> white -> restore (inverted)
+        var firstFlash = isDarkMode ? '#000000' : '#FFFFFF';
+        var secondFlash = isDarkMode ? '#FFFFFF' : '#000000';
+
+        // First flash (100ms)
+        document.body.style.backgroundColor = firstFlash;
+        document.body.style.color = firstFlash;
+
+        setTimeout(function() {
+            // Second flash (100ms)
+            document.body.style.backgroundColor = secondFlash;
+            document.body.style.color = secondFlash;
+
+            setTimeout(function() {
+                // Restore original (let CSS variables take over)
+                document.body.style.backgroundColor = '';
+                document.body.style.color = '';
+            }, 100);
+        }, 100);
+    }
+
+    function handleScroll(amount) {
+        // Perform the scroll
+        window.scrollBy(0, amount);
+
+        // Track page turns for e-ink refresh
+        var scrollCount = parseInt(sessionStorage.getItem('scrollCount') || '0');
+        scrollCount++;
+
+        // Flash screen every N scrolls (like Kindle's page refresh)
+        if (scrollCount >= REFRESH_INTERVAL) {
+            flashScreen();
+            scrollCount = 0;
+        }
+
+        sessionStorage.setItem('scrollCount', scrollCount.toString());
+    }
+
+    // Progress tracking beacon (every 30 seconds)
     setInterval(function() {
         var p = window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
         new Image().src = '/kindle/progress/{{ doc_id }}?p=' + Math.min(1, p).toFixed(2);
