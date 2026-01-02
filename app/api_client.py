@@ -274,27 +274,27 @@ class ReadwiseClient:
         list_cache.clear()
         logger.info("Invalidated inbox list cache")
 
-    async def get_all_articles(self, limit_per_location: int = 100) -> List[Dict]:
+    async def get_library_articles(self, limit_per_location: int = 100) -> List[Dict]:
         """
-        Fetch articles from active locations to gather tags.
-        Only includes later and shortlist locations.
+        Fetch articles from library locations (later and shortlist).
+        Used for tag aggregation and filtering.
 
         Args:
             limit_per_location: Maximum number of items to fetch per location
 
         Returns:
-            List of all article metadata dictionaries from active locations.
+            List of article metadata dictionaries from library locations.
         """
         # Only fetch from later and shortlist locations
         active_locations = {"later", "shortlist"}
 
         # Check cache
-        cache_key = f"all_articles_{limit_per_location}"
+        cache_key = f"library_articles_{limit_per_location}"
         if cache_key in list_cache:
-            logger.info("Loading all articles from cache")
+            logger.info("Loading library articles from cache")
             return list_cache[cache_key]
 
-        logger.info("Fetching articles from active locations for tags (later, shortlist)")
+        logger.info("Fetching articles from library locations for tags (later, shortlist)")
 
         # Fetch from active locations
         all_articles = []

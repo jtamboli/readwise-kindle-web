@@ -251,8 +251,8 @@ async def list_tags(request: Request):
     try:
         is_dark = is_dark_mode()
 
-        # Get all articles to extract tags
-        all_articles = await client.get_all_articles(limit_per_location=100)
+        # Get library articles to extract tags
+        all_articles = await client.get_library_articles(limit_per_location=100)
 
         # Count tags
         tag_counts = {}
@@ -300,8 +300,8 @@ async def list_articles_by_tag(request: Request, tag_name: str):
     try:
         is_dark = is_dark_mode()
 
-        # Get all articles and filter by tag
-        all_articles = await client.get_all_articles(limit_per_location=100)
+        # Get library articles and filter by tag
+        all_articles = await client.get_library_articles(limit_per_location=100)
 
         # Filter articles that have the specified tag
         filtered_items = []
