@@ -277,7 +277,7 @@ class ReadwiseClient:
     async def get_all_articles(self, limit_per_location: int = 100) -> List[Dict]:
         """
         Fetch articles from active locations to gather tags.
-        Excludes archive and feed locations.
+        Only includes later and shortlist locations.
 
         Args:
             limit_per_location: Maximum number of items to fetch per location
@@ -285,8 +285,8 @@ class ReadwiseClient:
         Returns:
             List of all article metadata dictionaries from active locations.
         """
-        # Only fetch from active locations, exclude archive and feed
-        active_locations = {"new", "later", "shortlist"}
+        # Only fetch from later and shortlist locations
+        active_locations = {"later", "shortlist"}
 
         # Check cache
         cache_key = f"all_articles_{limit_per_location}"
@@ -294,7 +294,7 @@ class ReadwiseClient:
             logger.info("Loading all articles from cache")
             return list_cache[cache_key]
 
-        logger.info("Fetching articles from active locations for tags (new, later, shortlist)")
+        logger.info("Fetching articles from active locations for tags (later, shortlist)")
 
         # Fetch from active locations
         all_articles = []
