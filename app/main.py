@@ -16,6 +16,30 @@ app = FastAPI(title="Readwise Kindle Web Reader")
 templates = Jinja2Templates(directory="/app/kindle_reader/templates")
 
 
+def words_to_minutes(word_count: int) -> int:
+    """
+    Convert word count to estimated reading time in minutes.
+
+    Uses an average reading speed of 238 words per minute.
+    Rounds up to ensure at least 1 minute for any content.
+
+    Args:
+        word_count: Number of words in the document
+
+    Returns:
+        Estimated reading time in minutes (minimum 1)
+    """
+    if not word_count or word_count <= 0:
+        return 0
+    # Average reading speed: 238 words per minute
+    minutes = (word_count + 237) // 238  # Round up using integer division
+    return max(1, minutes)
+
+
+# Register custom Jinja2 filter
+templates.env.filters["words_to_minutes"] = words_to_minutes
+
+
 def sort_by_recent_activity(items: List[Dict]) -> List[Dict]:
     """
     Sort items by last_opened_at (most recent first), falling back to last_moved_at.

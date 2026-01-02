@@ -130,7 +130,7 @@
                 <div class="article-meta">
                     {% if item.author %}{{ item.author }} &middot; {% endif %}
                     {{ item.source or "Unknown source" }}
-                    {% if item.word_count %} &middot; {{ item.word_count }} words{% endif %}
+                    {% if item.word_count %} &middot; {{ item.word_count|words_to_minutes }} min{% endif %}
                 </div>
                 {% if item.summary %}
                 <div class="article-summary">{{ item.summary[:150] }}{% if item.summary|length > 150 %}...{% endif %}</div>
@@ -153,7 +153,7 @@
                 <div class="article-meta">
                     {% if item.author %}{{ item.author }} &middot; {% endif %}
                     {{ item.source or "Unknown source" }}
-                    {% if item.word_count %} &middot; {{ item.word_count }} words{% endif %}
+                    {% if item.word_count %} &middot; {{ item.word_count|words_to_minutes }} min{% endif %}
                 </div>
                 {% if item.summary %}
                 <div class="article-summary">{{ item.summary[:150] }}{% if item.summary|length > 150 %}...{% endif %}</div>
