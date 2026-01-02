@@ -10,29 +10,29 @@
     <style>
         :root {
             --bg-color: #ffffff;
-            --text-color: #333333;
-            --link-color: #0066cc;
-            --link-visited: #551a8b;
-            --link-hover: #004499;
-            --meta-color: #666666;
-            --border-color: #dddddd;
-            --border-dark: #333333;
-            --quote-color: #555555;
-            --quote-border: #cccccc;
-            --disabled-color: #cccccc;
+            --text-color: #000000;
+            --link-color: #000000;
+            --link-visited: #000000;
+            --link-hover: #000000;
+            --meta-color: #000000;
+            --border-color: #000000;
+            --border-dark: #000000;
+            --quote-color: #000000;
+            --quote-border: #000000;
+            --disabled-color: #000000;
         }
         :root.dark {
-            --bg-color: #1a1a1a;
-            --text-color: #e0e0e0;
-            --link-color: #6699ff;
-            --link-visited: #9999ff;
-            --link-hover: #88bbff;
-            --meta-color: #999999;
-            --border-color: #444444;
-            --border-dark: #888888;
-            --quote-color: #bbbbbb;
-            --quote-border: #666666;
-            --disabled-color: #555555;
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --link-color: #ffffff;
+            --link-visited: #ffffff;
+            --link-hover: #ffffff;
+            --meta-color: #ffffff;
+            --border-color: #ffffff;
+            --border-dark: #ffffff;
+            --quote-color: #ffffff;
+            --quote-border: #ffffff;
+            --disabled-color: #ffffff;
         }
         body {
             font-family: "Merriweather", Georgia, serif;
@@ -42,6 +42,15 @@
             max-width: 600px;
             background-color: var(--bg-color);
             color: var(--text-color);
+            /* E-ink optimizations */
+            text-align: justify;
+            hyphens: auto;
+            -webkit-hyphens: auto;
+            text-justify: inter-word;
+            letter-spacing: 0.015em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
         .zone-left {
             position: fixed;
