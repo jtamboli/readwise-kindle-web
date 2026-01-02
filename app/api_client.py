@@ -274,6 +274,48 @@ class ReadwiseClient:
         list_cache.clear()
         logger.info("Invalidated inbox list cache")
 
+    async def get_all_articles(self, limit_per_location: int = 100) -> List[Dict]:
+        """
+        Fetch articles from all locations to gather tags.
+
+        Args:
+            limit_per_location: Maximum number of items to fetch per location
+
+        Returns:
+            List of all article metadata dictionaries from all locations.
+        """
+        # Check cache
+        cache_key = f"all_articles_{limit_per_location}"
+        if cache_key in list_cache:
+            logger.info("Loading all articles from cache")
+            return list_cache[cache_key]
+
+        logger.info("Fetching articles from all locations for tags")
+
+        # Fetch from all locations
+        all_articles = []
+        for location in VALID_LOCATIONS:
+            try:
+                items = await self.get_items_by_location(location, limit=limit_per_location)
+                all_articles.extend(items)
+            except Exception as e:
+                logger.warning(f"Error fetching {location} items: {e}")
+                continue
+
+        # Remove duplicates by ID (in case an article appears in multiple locations)
+        seen_ids = set()
+        unique_articles = []
+        for article in all_articles:
+            article_id = article.get("id")
+            if article_id and article_id not in seen_ids:
+                seen_ids.add(article_id)
+                unique_articles.append(article)
+
+        # Cache the results
+        list_cache[cache_key] = unique_articles
+        logger.info(f"Cached {len(unique_articles)} unique articles")
+        return unique_articles
+
 
 # Singleton instance
 client = ReadwiseClient()
