@@ -288,6 +288,9 @@
         sessionStorage.setItem('scrollCount', scrollCount.toString());
     }
 
+    // Flash screen on initial article load (like Kindle does when opening a document)
+    flashScreen();
+
     // Progress tracking beacon (every 30 seconds)
     setInterval(function() {
         var p = window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
