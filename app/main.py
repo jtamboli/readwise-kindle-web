@@ -214,6 +214,18 @@ async def list_feed(request: Request):
         raise HTTPException(status_code=500, detail=f"Error fetching feed items: {str(e)}")
 
 
+@app.get("/refresh", response_class=RedirectResponse)
+async def refresh_cache():
+    """
+    Clear all caches and redirect to home page.
+
+    Returns:
+        Redirect to home page
+    """
+    client.invalidate_list_cache()
+    return RedirectResponse(url="/kindle/", status_code=303)
+
+
 @app.get("/health")
 async def health():
     """Health check endpoint."""
