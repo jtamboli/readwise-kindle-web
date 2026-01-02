@@ -117,6 +117,7 @@ async def read_article(request: Request, doc_id: str):
 
         # Render page
         is_dark = is_dark_mode()
+        reading_progress = document.get("reading_progress", 0) or 0
         return templates.TemplateResponse(
             "page.html",
             {
@@ -127,6 +128,7 @@ async def read_article(request: Request, doc_id: str):
                 "source": document.get("source"),
                 "content": clean_html,
                 "is_dark": is_dark,
+                "reading_progress": reading_progress,
             },
         )
     except HTTPException:

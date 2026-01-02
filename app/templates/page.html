@@ -300,6 +300,15 @@
     // Flash screen on initial article load (like Kindle does when opening a document)
     flashScreen();
 
+    // Scroll to saved reading progress position
+    var savedProgress = {{ reading_progress }};
+    if (savedProgress > 0) {
+        var scrollableHeight = document.body.scrollHeight - window.innerHeight;
+        if (scrollableHeight > 0) {
+            window.scrollTo(0, scrollableHeight * savedProgress);
+        }
+    }
+
     // Progress tracking beacon (every 30 seconds)
     setInterval(function() {
         var p = window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
