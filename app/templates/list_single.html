@@ -91,6 +91,20 @@
             color: var(--meta-color);
             margin-bottom: 0.3em;
         }
+        .hide-link {
+            font-size: 0.85em;
+            color: var(--meta-color);
+            text-decoration: underline;
+            margin-top: 0.3em;
+            display: inline-block;
+        }
+        .hide-link a {
+            color: var(--meta-color);
+            text-decoration: underline;
+        }
+        .hide-link a:visited {
+            color: var(--meta-color);
+        }
         .article-summary {
             font-size: 0.95em;
             color: var(--text-color);
@@ -130,6 +144,9 @@
                 {% if item.summary %}
                 <div class="article-summary">{{ item.summary[:150] }}{% if item.summary|length > 150 %}...{% endif %}</div>
                 {% endif %}
+                <div class="hide-link">
+                    <a href="/kindle/hide/{{ item.id }}">Hide from Kindle</a>
+                </div>
             </li>
             {% endfor %}
         </ul>

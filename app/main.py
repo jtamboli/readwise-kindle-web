@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from kindle_reader.api_client import client, VALID_LOCATIONS
 from kindle_reader.sanitizer import sanitize_html
 from kindle_reader.sun_times import is_dark_mode
+from kindle_reader.hidden_storage import hidden_storage
 
 # 1x1 transparent GIF for progress tracking beacon
 TRANSPARENT_GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
@@ -38,6 +39,19 @@ def words_to_minutes(word_count: int) -> int:
 
 # Register custom Jinja2 filter
 templates.env.filters["words_to_minutes"] = words_to_minutes
+
+
+def filter_hidden_articles(items: List[Dict]) -> List[Dict]:
+    """
+    Filter out articles that are marked as hidden from Kindle.
+
+    Args:
+        items: List of document dictionaries
+
+    Returns:
+        List of documents with hidden articles removed
+    """
+    return [item for item in items if not hidden_storage.is_hidden(item.get("id"))]
 
 
 def sort_by_recent_activity(items: List[Dict]) -> List[Dict]:
@@ -72,6 +86,10 @@ async def list_home(request: Request):
         is_dark = is_dark_mode()
         shortlist_items = await client.get_items_by_location("shortlist", limit=5)
         later_items = await client.get_items_by_location("later", limit=20)
+
+        # Filter out hidden articles
+        shortlist_items = filter_hidden_articles(shortlist_items)
+        later_items = filter_hidden_articles(later_items)
 
         # Sort by recent activity (last_opened_at with fallback to last_moved_at)
         shortlist_items = sort_by_recent_activity(shortlist_items)
@@ -193,6 +211,9 @@ async def list_by_location(request: Request, location: str):
         is_dark = is_dark_mode()
         items = await client.get_items_by_location(location, limit=100)
 
+        # Filter out hidden articles
+        items = filter_hidden_articles(items)
+
         # Sort by recent activity (last_opened_at with fallback to last_moved_at)
         items = sort_by_recent_activity(items)
 
@@ -223,6 +244,9 @@ async def list_feed(request: Request):
     try:
         is_dark = is_dark_mode()
         items = await client.get_items_by_location("feed", limit=100)
+
+        # Filter out hidden articles
+        items = filter_hidden_articles(items)
 
         # Sort by recent activity (last_opened_at with fallback to last_moved_at)
         items = sort_by_recent_activity(items)
@@ -318,6 +342,9 @@ async def list_articles_by_tag(request: Request, tag_name: str):
             if tag_name in tag_names:
                 filtered_items.append(article)
 
+        # Filter out hidden articles
+        filtered_items = filter_hidden_articles(filtered_items)
+
         # Sort by recent activity
         filtered_items = sort_by_recent_activity(filtered_items)
 
@@ -332,6 +359,35 @@ async def list_articles_by_tag(request: Request, tag_name: str):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching articles for tag '{tag_name}': {str(e)}")
+
+
+@app.get("/hide/{doc_id}", response_class=RedirectResponse)
+async def toggle_hidden(request: Request, doc_id: str):
+    """
+    Toggle the hidden status of an article.
+
+    Args:
+        doc_id: Document ID to toggle
+        request: FastAPI request object (used to get referer)
+
+    Returns:
+        Redirect to the referring page or home
+    """
+    try:
+        # Toggle the hidden status
+        is_now_hidden = hidden_storage.toggle(doc_id)
+
+        # Invalidate list cache to ensure fresh data on next load
+        client.invalidate_list_cache()
+
+        # Redirect back to the referring page or home
+        referer = request.headers.get("referer")
+        if referer and "/kindle/" in referer:
+            return RedirectResponse(url=referer, status_code=303)
+        else:
+            return RedirectResponse(url="/kindle/", status_code=303)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error toggling hidden status: {str(e)}")
 
 
 @app.get("/refresh", response_class=RedirectResponse)
