@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "count": {
+      "type": "number"
+    },
+    "nextPageCursor": {
+      "type": "string"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "tags": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "to-try": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "created": {
+                    "type": "number"
+                  }
+                }
+              },
+              "c1": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "created": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          },
+          "site_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "word_count": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reading_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "published_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content": {
+            "type": "null"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": "null"
+          },
+          "reading_progress": {
+            "type": "number"
+          },
+          "first_opened_at": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "last_opened_at": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "saved_at": {
+            "type": "string"
+          },
+          "last_moved_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "title",
+          "author",
+          "source",
+          "category",
+          "location",
+          "tags",
+          "site_name",
+          "word_count",
+          "reading_time",
+          "created_at",
+          "updated_at",
+          "published_date",
+          "summary",
+          "image_url",
+          "content",
+          "source_url",
+          "notes",
+          "parent_id",
+          "reading_progress",
+          "first_opened_at",
+          "last_opened_at",
+          "saved_at",
+          "last_moved_at"
+        ]
+      }
+    }
+  }
+}

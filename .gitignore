@@ -34,3 +34,5 @@ readwise.json
 readwise-excerpt.json
 repomix-output.xml
 *.backup_*
+sample-get-documents.json
+sample-single-document.json
