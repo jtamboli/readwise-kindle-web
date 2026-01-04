@@ -26,6 +26,9 @@ document_cache: Dict[str, Dict] = {}  # No TTL, invalidated manually
 # Valid locations for the API
 VALID_LOCATIONS = {"new", "later", "shortlist", "archive", "feed"}
 
+# Tag used to mark articles as hidden from Kindle
+KINDLE_HIDDEN_TAG = "kindle-hidden"
+
 
 class ReadwiseClient:
     """Async client for Readwise Reader API."""
@@ -259,6 +262,98 @@ class ReadwiseClient:
         logger.info(f"Cached {len(unique_articles)} unique articles")
         return unique_articles
 
+    def _normalize_tags(self, tags) -> List[str]:
+        """
+        Normalize tags to a list of strings.
+
+        Args:
+            tags: Tags in various formats (dict, list, or None)
+
+        Returns:
+            List of tag names as strings
+        """
+        if isinstance(tags, dict):
+            return list(tags.keys())
+        elif isinstance(tags, list):
+            return tags
+        else:
+            return []
+
+    async def toggle_tag(self, doc_id: str, tag: str, current_article_data: Optional[Dict] = None) -> bool:
+        """
+        Toggle a tag on an article (add if not present, remove if present).
+
+        Args:
+            doc_id: Document ID
+            tag: Tag name to toggle
+            current_article_data: Optional current article data to avoid extra API call
+
+        Returns:
+            True if tag was added, False if it was removed
+        """
+        logger.info(f"Toggling tag '{tag}' on document {doc_id}")
+
+        # Get current tags
+        if current_article_data:
+            current_tags = self._normalize_tags(current_article_data.get("tags", []))
+        else:
+            # Fetch current article data to get tags
+            article = await self.get_document(doc_id)
+            if not article:
+                raise ValueError(f"Document {doc_id} not found")
+            current_tags = self._normalize_tags(article.get("tags", []))
+
+        # Toggle the tag
+        if tag in current_tags:
+            # Remove the tag
+            new_tags = [t for t in current_tags if t != tag]
+            added = False
+            logger.info(f"Removing tag '{tag}' from document {doc_id}")
+        else:
+            # Add the tag
+            new_tags = current_tags + [tag]
+            added = True
+            logger.info(f"Adding tag '{tag}' to document {doc_id}")
+
+        # Update the article with new tags
+        async with httpx.AsyncClient() as client:
+            logger.info(f"  → API request: PATCH /update/{doc_id}/ (tags={new_tags})")
+
+            response = await client.patch(
+                f"{self.base_url}/update/{doc_id}/",
+                headers=self.headers,
+                json={"tags": new_tags},
+                timeout=10.0,
+            )
+            response.raise_for_status()
+
+            logger.info(f"  ← Tags updated successfully")
+
+        # Invalidate caches
+        self.invalidate_document_cache(doc_id)
+        self.invalidate_list_cache()
+
+        return added
+
 
 # Singleton instance
 client = ReadwiseClient()
+
+
+# Helper function to check if an article is hidden
+def is_article_hidden(article: Dict) -> bool:
+    """
+    Check if an article has the kindle-hidden tag.
+
+    Args:
+        article: Article dictionary
+
+    Returns:
+        True if article is hidden, False otherwise
+    """
+    tags = article.get("tags", {})
+    if isinstance(tags, dict):
+        return KINDLE_HIDDEN_TAG in tags
+    elif isinstance(tags, list):
+        return KINDLE_HIDDEN_TAG in tags
+    return False

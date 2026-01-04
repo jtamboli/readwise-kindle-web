@@ -329,11 +329,12 @@ Fields omitted from the request will remain unchanged.
 | title | string | The document's title, it will overwrite the original title of the document | no |
 | author | string | The document's author, it will overwrite the original author (if found during the parsing step) | no |
 | summary | string | Summary of the document | no |
-| published\_date | date | A datetime representing when the document was published in the ISO 8601 format; default timezone is UTC.  
+| published\_date | date | A datetime representing when the document was published in the ISO 8601 format; default timezone is UTC.
 Example: `"2020-07-14T20:11:24+00:00"` | no |
 | image\_url | string | An image URL to use as cover image | no |
 | location | string | One of: `new`, `later`, `archive` or `feed`. Represents the current location of the document (previously called `triage_status`). Note: if you try to use a location the user doesn't have enabled in their settings, this value will be set to their default location. | no |
 | category | string | One of: `article`, `email`, `rss`, `highlight`, `note`, `pdf`, `epub`, `tweet` or `video`. | no |
+| tags | list | A list of strings containing tags, example: `["tag1", "tag2"]` | no |
 
 **Response:**
 

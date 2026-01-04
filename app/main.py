@@ -5,10 +5,9 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from kindle_reader.api_client import client, VALID_LOCATIONS
+from kindle_reader.api_client import client, VALID_LOCATIONS, KINDLE_HIDDEN_TAG, is_article_hidden
 from kindle_reader.sanitizer import sanitize_html
 from kindle_reader.sun_times import is_dark_mode
-from kindle_reader.hidden_storage import hidden_storage
 
 # 1x1 transparent GIF for progress tracking beacon
 TRANSPARENT_GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
@@ -45,13 +44,15 @@ def filter_hidden_articles(items: List[Dict]) -> List[Dict]:
     """
     Filter out articles that are marked as hidden from Kindle.
 
+    Articles with the 'kindle-hidden' tag are excluded from display.
+
     Args:
         items: List of document dictionaries
 
     Returns:
         List of documents with hidden articles removed
     """
-    return [item for item in items if not hidden_storage.is_hidden(item.get("id"))]
+    return [item for item in items if not is_article_hidden(item)]
 
 
 def sort_by_recent_activity(items: List[Dict]) -> List[Dict]:
@@ -364,7 +365,7 @@ async def list_articles_by_tag(request: Request, tag_name: str):
 @app.get("/hide/{doc_id}", response_class=RedirectResponse)
 async def toggle_hidden(request: Request, doc_id: str):
     """
-    Toggle the hidden status of an article.
+    Toggle the hidden status of an article by adding/removing the 'kindle-hidden' tag.
 
     Args:
         doc_id: Document ID to toggle
@@ -374,11 +375,10 @@ async def toggle_hidden(request: Request, doc_id: str):
         Redirect to the referring page or home
     """
     try:
-        # Toggle the hidden status
-        is_now_hidden = hidden_storage.toggle(doc_id)
+        # Toggle the kindle-hidden tag
+        is_now_hidden = await client.toggle_tag(doc_id, KINDLE_HIDDEN_TAG)
 
-        # Invalidate list cache to ensure fresh data on next load
-        client.invalidate_list_cache()
+        # Cache is already invalidated by toggle_tag method
 
         # Redirect back to the referring page or home
         referer = request.headers.get("referer")
