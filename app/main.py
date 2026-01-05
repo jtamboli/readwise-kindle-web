@@ -55,6 +55,21 @@ def filter_hidden_articles(items: List[Dict]) -> List[Dict]:
     return [item for item in items if not is_article_hidden(item)]
 
 
+def filter_seen_articles(items: List[Dict]) -> List[Dict]:
+    """
+    Filter out articles that have been seen (opened at least once).
+
+    Articles with the 'seen' boolean flag set to True are excluded.
+
+    Args:
+        items: List of document dictionaries
+
+    Returns:
+        List of documents with seen articles removed
+    """
+    return [item for item in items if not item.get("seen")]
+
+
 def sort_by_recent_activity(items: List[Dict]) -> List[Dict]:
     """
     Sort items by last_opened_at (most recent first), falling back to last_moved_at.
@@ -248,6 +263,9 @@ async def list_feed(request: Request):
 
         # Filter out hidden articles
         items = filter_hidden_articles(items)
+
+        # Filter out seen articles
+        items = filter_seen_articles(items)
 
         # Sort by recent activity (last_opened_at with fallback to last_moved_at)
         items = sort_by_recent_activity(items)
