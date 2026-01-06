@@ -137,8 +137,7 @@
                     <a href="/kindle/read/{{ item.id }}">{{ item.title or "Untitled" }}</a>
                 </div>
                 <div class="article-meta">
-                    {% if item.author %}{{ item.author }} &middot; {% endif %}
-                    {{ item.source or "Unknown source" }}
+                    {{ item.source_url|extract_domain or "Unknown domain" }}
                     {% if item.word_count %} &middot; {{ item.word_count|words_to_minutes }} min{% endif %}
                 </div>
                 {% if item.summary %}
