@@ -250,6 +250,8 @@
     // E-ink screen refresh logic
     // Kindle does full refresh every 5-6 page turns to clear ghosting
     // Less frequent in dark mode since dark backgrounds show less ghosting
+    // Only enable on Kindle devices (other devices don't need e-ink refresh)
+    var isKindle = /Kindle/i.test(navigator.userAgent);
     var isDarkMode = document.documentElement.classList.contains('dark');
     var REFRESH_INTERVAL = isDarkMode ? 8 : 6;
 
@@ -284,21 +286,26 @@
         // Perform the scroll
         window.scrollBy(0, amount);
 
-        // Track page turns for e-ink refresh
-        var scrollCount = parseInt(sessionStorage.getItem('scrollCount') || '0');
-        scrollCount++;
+        // Track page turns for e-ink refresh (only on Kindle)
+        if (isKindle) {
+            var scrollCount = parseInt(sessionStorage.getItem('scrollCount') || '0');
+            scrollCount++;
 
-        // Flash screen every N scrolls (like Kindle's page refresh)
-        if (scrollCount >= REFRESH_INTERVAL) {
-            flashScreen();
-            scrollCount = 0;
+            // Flash screen every N scrolls (like Kindle's page refresh)
+            if (scrollCount >= REFRESH_INTERVAL) {
+                flashScreen();
+                scrollCount = 0;
+            }
+
+            sessionStorage.setItem('scrollCount', scrollCount.toString());
         }
-
-        sessionStorage.setItem('scrollCount', scrollCount.toString());
     }
 
     // Flash screen on initial article load (like Kindle does when opening a document)
-    flashScreen();
+    // Only on Kindle devices
+    if (isKindle) {
+        flashScreen();
+    }
 
     // Scroll to saved reading progress position
     var savedProgress = {{ reading_progress }};
