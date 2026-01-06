@@ -2,6 +2,7 @@
 import asyncio
 import random
 from typing import List, Dict
+from urllib.parse import urlparse
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -37,8 +38,32 @@ def words_to_minutes(word_count: int) -> int:
     return max(1, minutes)
 
 
-# Register custom Jinja2 filter
+def extract_domain(url: str) -> str:
+    """
+    Extract the domain from a URL, removing 'www.' prefix if present.
+
+    Args:
+        url: Full URL string
+
+    Returns:
+        Domain name without protocol and 'www.' prefix, or empty string if invalid
+    """
+    if not url:
+        return ""
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc or parsed.path
+        # Remove 'www.' prefix if present
+        if domain.startswith('www.'):
+            domain = domain[4:]
+        return domain
+    except Exception:
+        return ""
+
+
+# Register custom Jinja2 filters
 templates.env.filters["words_to_minutes"] = words_to_minutes
+templates.env.filters["extract_domain"] = extract_domain
 
 
 def filter_hidden_articles(items: List[Dict]) -> List[Dict]:
