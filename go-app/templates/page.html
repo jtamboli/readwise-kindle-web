@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en"{{if .IsDark}} class="dark"{{end}}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --link-color: #000000;
+            --link-visited: #000000;
+            --link-hover: #000000;
+            --meta-color: #000000;
+            --border-color: #000000;
+            --border-dark: #000000;
+            --quote-color: #000000;
+            --quote-border: #000000;
+            --disabled-color: #000000;
+        }
+        :root.dark {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --link-color: #ffffff;
+            --link-visited: #ffffff;
+            --link-hover: #ffffff;
+            --meta-color: #ffffff;
+            --border-color: #ffffff;
+            --border-dark: #ffffff;
+            --quote-color: #ffffff;
+            --quote-border: #ffffff;
+            --disabled-color: #ffffff;
+        }
+        body {
+            font-family: "Merriweather", Georgia, serif;
+            margin: 1em;
+            line-height: 1.5;
+            font-size: 18px;
+            max-width: 600px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            /* E-ink optimizations */
+            text-align: justify;
+            hyphens: auto;
+            -webkit-hyphens: auto;
+            text-justify: inter-word;
+            letter-spacing: 0.015em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        .zone-left {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 20%;
+            z-index: 1;
+        }
+        .zone-right {
+            position: fixed;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 80%;
+            z-index: 1;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            line-height: 1.2;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+        h1 {
+            font-size: 1.5em;
+        }
+        h2 {
+            font-size: 1.3em;
+        }
+        h3, h4, h5, h6 {
+            font-size: 1.1em;
+        }
+        p {
+            margin-bottom: 1em;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 1em 0;
+        }
+        blockquote {
+            margin: 1em 0;
+            padding-left: 1em;
+            border-left: 3px solid var(--quote-border);
+            color: var(--quote-color);
+        }
+        ul, ol {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+        li {
+            margin-bottom: 0.5em;
+        }
+        pre {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.85em;
+            background-color: var(--border-color);
+            padding: 1em;
+            margin: 1em 0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.9em;
+            background-color: var(--border-color);
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            font-size: inherit;
+        }
+        figure {
+            margin: 1em 0;
+            padding: 0;
+        }
+        figcaption {
+            font-size: 0.85em;
+            color: var(--meta-color);
+            margin-top: 0.5em;
+            font-style: italic;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 2em 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+            font-size: 0.9em;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 0.5em;
+            text-align: left;
+        }
+        th {
+            background-color: var(--border-color);
+            font-weight: bold;
+        }
+        sup, sub {
+            font-size: 0.75em;
+            line-height: 0;
+            position: relative;
+            vertical-align: baseline;
+        }
+        sup {
+            top: -0.5em;
+        }
+        sub {
+            bottom: -0.25em;
+        }
+        a {
+            color: var(--link-color);
+            text-decoration: underline;
+        }
+        a:visited {
+            color: var(--link-visited);
+        }
+        .article-footer {
+            position: relative;
+            z-index: 10;
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 2px solid var(--border-dark);
+            text-align: center;
+            font-size: 0.9em;
+        }
+        .article-footer a {
+            margin: 0 0.5em;
+        }
+        .article-header {
+            margin-bottom: 1.5em;
+            padding-bottom: 0.5em;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .article-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 0.3em;
+        }
+        .article-meta {
+            font-size: 0.9em;
+            color: var(--meta-color);
+        }
+        .archive-form {
+            display: inline;
+        }
+        .archive-button {
+            background: none;
+            border: none;
+            color: var(--link-color);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: inherit;
+            font-family: inherit;
+            padding: 0;
+        }
+        .archive-button:hover {
+            color: var(--link-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="zone-left" onclick="handleScroll(-window.innerHeight * 0.9)"></div>
+    <div class="zone-right" onclick="handleScroll(window.innerHeight * 0.9)"></div>
+
+    <div class="article-header">
+        <div class="article-title">{{.Title}}</div>
+        {{if or .Author .Source}}
+        <div class="article-meta">
+            {{with .Author}}{{.}}{{end}}
+            {{if and .Author .Source}} &middot; {{end}}
+            {{with .Source}}{{.}}{{end}}
+        </div>
+        {{end}}
+    </div>
+
+    <div class="content">
+        {{safeHTML .Content}}
+    </div>
+
+    <div class="article-footer">
+        <a href="/kindle/">Back to list</a>
+        &middot;
+        <form class="archive-form" method="post" action="/kindle/archive/{{.DocID}}">
+            <button type="submit" class="archive-button">Archive</button>
+        </form>
+    </div>
+
+    <script>
+    // E-ink screen refresh logic
+    // Kindle does full refresh every 5-6 page turns to clear ghosting
+    // Less frequent in dark mode since dark backgrounds show less ghosting
+    // Only enable on Kindle devices (other devices don't need e-ink refresh)
+    var isKindle = /Kindle/i.test(navigator.userAgent);
+    var isDarkMode = document.documentElement.classList.contains('dark');
+    var REFRESH_INTERVAL = isDarkMode ? 8 : 6;
+
+    function flashScreen() {
+        // Save current colors
+        var originalBg = document.body.style.backgroundColor;
+        var originalColor = document.body.style.color;
+
+        // Flash sequence: white -> black -> restore
+        // In dark mode: black -> white -> restore (inverted)
+        var firstFlash = isDarkMode ? '#000000' : '#FFFFFF';
+        var secondFlash = isDarkMode ? '#FFFFFF' : '#000000';
+
+        // First flash (100ms)
+        document.body.style.backgroundColor = firstFlash;
+        document.body.style.color = firstFlash;
+
+        setTimeout(function() {
+            // Second flash (100ms)
+            document.body.style.backgroundColor = secondFlash;
+            document.body.style.color = secondFlash;
+
+            setTimeout(function() {
+                // Restore original (let CSS variables take over)
+                document.body.style.backgroundColor = '';
+                document.body.style.color = '';
+            }, 100);
+        }, 100);
+    }
+
+    function handleScroll(amount) {
+        // Perform the scroll
+        window.scrollBy(0, amount);
+
+        // Track page turns for e-ink refresh (only on Kindle)
+        if (isKindle) {
+            var scrollCount = parseInt(sessionStorage.getItem('scrollCount') || '0');
+            scrollCount++;
+
+            // Flash screen every N scrolls (like Kindle's page refresh)
+            if (scrollCount >= REFRESH_INTERVAL) {
+                flashScreen();
+                scrollCount = 0;
+            }
+
+            sessionStorage.setItem('scrollCount', scrollCount.toString());
+        }
+    }
+
+    // Flash screen on initial article load (like Kindle does when opening a document)
+    // Only on Kindle devices
+    if (isKindle) {
+        flashScreen();
+    }
+
+    // Scroll to saved reading progress position
+    var savedProgress = {{.ReadingProgress}};
+    if (savedProgress > 0) {
+        var scrollableHeight = document.body.scrollHeight - window.innerHeight;
+        if (scrollableHeight > 0) {
+            window.scrollTo(0, scrollableHeight * savedProgress);
+        }
+    }
+
+    // Progress tracking beacon (every 30 seconds)
+    setInterval(function() {
+        var p = window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
+        new Image().src = '/kindle/progress/{{.DocID}}?p=' + Math.min(1, p).toFixed(2);
+    }, 30000);
+    </script>
+</body>
+</html>
