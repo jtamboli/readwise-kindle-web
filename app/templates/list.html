@@ -66,6 +66,7 @@
             margin-bottom: 1em;
             padding-bottom: 0.5em;
             border-bottom: 1px solid var(--border-color);
+            display: flex;
         }
         .nav-links a {
             color: var(--link-color);
@@ -74,6 +75,10 @@
         }
         .nav-links a:visited {
             color: var(--link-visited);
+        }
+        .nav-links .right-link {
+            margin-left: auto;
+            margin-right: 0;
         }
         .article-list {
             list-style: none;
@@ -137,10 +142,10 @@
     <h1>Readwise Reader</h1>
 
     <div class="nav-links">
-        <a href="/kindle/refresh">Force refresh</a>
-        <a href="/kindle/feed">Feed</a>
-        <a href="/kindle/tags">Tags</a>
         <a href="#later">Later</a>
+        <a href="/kindle/tags">Tags</a>
+        <a href="/kindle/feed">Feed</a>
+        <a href="/kindle/refresh" class="right-link">Force refresh</a>
     </div>
 
     <h2><a href="/kindle/list/shortlist">Shortlist</a></h2>
