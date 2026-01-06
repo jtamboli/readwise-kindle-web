@@ -1,5 +1,6 @@
 """FastAPI application for Readwise Kindle web reader."""
 import asyncio
+import random
 from typing import List, Dict
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -281,6 +282,58 @@ async def list_feed(request: Request):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching feed items: {str(e)}")
+
+
+@app.get("/random", response_class=HTMLResponse)
+async def list_random(request: Request):
+    """
+    Display 10 random articles from Later and Shortlist locations.
+
+    Articles hidden on Kindle are excluded.
+    Results are shuffled in random order.
+
+    Returns:
+        HTML page with random article list
+    """
+    try:
+        is_dark = is_dark_mode()
+
+        # Fetch articles from both later and shortlist
+        later_items = await client.get_items_by_location("later", limit=100)
+        shortlist_items = await client.get_items_by_location("shortlist", limit=100)
+
+        # Combine all articles
+        all_items = later_items + shortlist_items
+
+        # Filter out hidden articles
+        all_items = filter_hidden_articles(all_items)
+
+        # Remove duplicates by ID (in case an article appears in both locations)
+        seen_ids = set()
+        unique_items = []
+        for item in all_items:
+            item_id = item.get("id")
+            if item_id and item_id not in seen_ids:
+                seen_ids.add(item_id)
+                unique_items.append(item)
+
+        # Shuffle the articles
+        random.shuffle(unique_items)
+
+        # Take the first 10 articles
+        random_items = unique_items[:10]
+
+        return templates.TemplateResponse(
+            "list_single.html",
+            {
+                "request": request,
+                "items": random_items,
+                "list_name": "Random",
+                "is_dark": is_dark,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching random articles: {str(e)}")
 
 
 @app.get("/tags", response_class=HTMLResponse)
