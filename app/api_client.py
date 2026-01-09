@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 import httpx
 from cachetools import TTLCache
 from kindle_reader.config import Config
+from kindle_reader.utils import normalize_tags, deduplicate_by_id
 
 
 # Configure logging
@@ -25,9 +26,6 @@ document_cache: Dict[str, Dict] = {}  # No TTL, invalidated manually
 
 # Valid locations for the API
 VALID_LOCATIONS = {"new", "later", "shortlist", "archive", "feed"}
-
-# Tag used to mark articles as hidden from Kindle
-KINDLE_HIDDEN_TAG = "kindle-hidden"
 
 
 class ReadwiseClient:
@@ -249,35 +247,12 @@ class ReadwiseClient:
                 continue
 
         # Remove duplicates by ID (in case an article appears in multiple locations)
-        seen_ids = set()
-        unique_articles = []
-        for article in all_articles:
-            article_id = article.get("id")
-            if article_id and article_id not in seen_ids:
-                seen_ids.add(article_id)
-                unique_articles.append(article)
+        unique_articles = deduplicate_by_id(all_articles)
 
         # Cache the results
         list_cache[cache_key] = unique_articles
         logger.info(f"Cached {len(unique_articles)} unique articles")
         return unique_articles
-
-    def _normalize_tags(self, tags) -> List[str]:
-        """
-        Normalize tags to a list of strings.
-
-        Args:
-            tags: Tags in various formats (dict, list, or None)
-
-        Returns:
-            List of tag names as strings
-        """
-        if isinstance(tags, dict):
-            return list(tags.keys())
-        elif isinstance(tags, list):
-            return tags
-        else:
-            return []
 
     async def toggle_tag(self, doc_id: str, tag: str, current_article_data: Optional[Dict] = None) -> bool:
         """
@@ -293,15 +268,15 @@ class ReadwiseClient:
         """
         logger.info(f"Toggling tag '{tag}' on document {doc_id}")
 
-        # Get current tags
+        # Get current tags using shared utility
         if current_article_data:
-            current_tags = self._normalize_tags(current_article_data.get("tags", []))
+            current_tags = normalize_tags(current_article_data.get("tags", []))
         else:
             # Fetch current article data to get tags
             article = await self.get_document(doc_id)
             if not article:
                 raise ValueError(f"Document {doc_id} not found")
-            current_tags = self._normalize_tags(article.get("tags", []))
+            current_tags = normalize_tags(article.get("tags", []))
 
         # Toggle the tag
         if tag in current_tags:
@@ -338,22 +313,3 @@ class ReadwiseClient:
 
 # Singleton instance
 client = ReadwiseClient()
-
-
-# Helper function to check if an article is hidden
-def is_article_hidden(article: Dict) -> bool:
-    """
-    Check if an article has the kindle-hidden tag.
-
-    Args:
-        article: Article dictionary
-
-    Returns:
-        True if article is hidden, False otherwise
-    """
-    tags = article.get("tags", {})
-    if isinstance(tags, dict):
-        return KINDLE_HIDDEN_TAG in tags
-    elif isinstance(tags, list):
-        return KINDLE_HIDDEN_TAG in tags
-    return False

@@ -1,15 +1,23 @@
 """FastAPI application for Readwise Kindle web reader."""
 import asyncio
 import random
-from typing import List, Dict
 from urllib.parse import urlparse
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from kindle_reader.api_client import client, VALID_LOCATIONS, KINDLE_HIDDEN_TAG, is_article_hidden
+from kindle_reader.api_client import client, VALID_LOCATIONS
+from kindle_reader.filters import (
+    KINDLE_HIDDEN_TAG,
+    filter_hidden_articles,
+    filter_seen_articles,
+    sort_by_recent_activity,
+    get_article_tags,
+    filter_by_tag,
+)
 from kindle_reader.sanitizer import sanitize_html
 from kindle_reader.sun_times import is_dark_mode
+from kindle_reader.utils import deduplicate_by_id, normalize_tags
 
 # 1x1 transparent GIF for progress tracking beacon
 TRANSPARENT_GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
@@ -64,56 +72,6 @@ def extract_domain(url: str) -> str:
 # Register custom Jinja2 filters
 templates.env.filters["words_to_minutes"] = words_to_minutes
 templates.env.filters["extract_domain"] = extract_domain
-
-
-def filter_hidden_articles(items: List[Dict]) -> List[Dict]:
-    """
-    Filter out articles that are marked as hidden from Kindle.
-
-    Articles with the 'kindle-hidden' tag are excluded from display.
-
-    Args:
-        items: List of document dictionaries
-
-    Returns:
-        List of documents with hidden articles removed
-    """
-    return [item for item in items if not is_article_hidden(item)]
-
-
-def filter_seen_articles(items: List[Dict]) -> List[Dict]:
-    """
-    Filter out articles that have been seen (opened at least once).
-
-    Articles with the 'seen' boolean flag set to True are excluded.
-
-    Args:
-        items: List of document dictionaries
-
-    Returns:
-        List of documents with seen articles removed
-    """
-    return [item for item in items if not item.get("seen")]
-
-
-def sort_by_recent_activity(items: List[Dict]) -> List[Dict]:
-    """
-    Sort items by last_opened_at (most recent first), falling back to last_moved_at.
-
-    For each item, uses last_opened_at if available, otherwise falls back to last_moved_at.
-    All items are then sorted together by their respective timestamps in descending order.
-
-    Args:
-        items: List of document dictionaries
-
-    Returns:
-        Sorted list of documents
-    """
-    def sort_key(item):
-        # Use last_opened_at if available, otherwise fall back to last_moved_at
-        return item.get("last_opened_at") or item.get("last_moved_at", "")
-
-    return sorted(items, key=sort_key, reverse=True)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -415,13 +373,7 @@ async def list_random(request: Request):
         all_items = filter_hidden_articles(all_items)
 
         # Remove duplicates by ID (in case an article appears in both locations)
-        seen_ids = set()
-        unique_items = []
-        for item in all_items:
-            item_id = item.get("id")
-            if item_id and item_id not in seen_ids:
-                seen_ids.add(item_id)
-                unique_items.append(item)
+        unique_items = deduplicate_by_id(all_items)
 
         # Shuffle the articles
         random.shuffle(unique_items)
@@ -456,21 +408,11 @@ async def list_tags(request: Request):
         # Get library articles to extract tags
         all_articles = await client.get_library_articles(limit_per_location=100)
 
-        # Count tags
+        # Count tags using the shared utility
         tag_counts = {}
         for article in all_articles:
-            article_tags = article.get("tags", {})
-            # Tags can be a dict with tag names as keys or a list
-            if isinstance(article_tags, dict):
-                tag_names = list(article_tags.keys())
-            elif isinstance(article_tags, list):
-                tag_names = article_tags
-            else:
-                tag_names = []
-
-            for tag_name in tag_names:
-                if tag_name:  # Skip empty tags
-                    tag_counts[tag_name] = tag_counts.get(tag_name, 0) + 1
+            for tag_name in get_article_tags(article):
+                tag_counts[tag_name] = tag_counts.get(tag_name, 0) + 1
 
         # Convert to list of dicts and sort by count (descending)
         tags = [{"name": name, "count": count} for name, count in tag_counts.items()]
@@ -502,23 +444,11 @@ async def list_articles_by_tag(request: Request, tag_name: str):
     try:
         is_dark = is_dark_mode()
 
-        # Get library articles and filter by tag
+        # Get library articles and filter by tag using shared utility
         all_articles = await client.get_library_articles(limit_per_location=100)
 
         # Filter articles that have the specified tag
-        filtered_items = []
-        for article in all_articles:
-            article_tags = article.get("tags", {})
-            # Tags can be a dict with tag names as keys or a list
-            if isinstance(article_tags, dict):
-                tag_names = list(article_tags.keys())
-            elif isinstance(article_tags, list):
-                tag_names = article_tags
-            else:
-                tag_names = []
-
-            if tag_name in tag_names:
-                filtered_items.append(article)
+        filtered_items = filter_by_tag(all_articles, tag_name)
 
         # Filter out hidden articles
         filtered_items = filter_hidden_articles(filtered_items)
