@@ -155,7 +155,7 @@
             {% for item in shortlist_items %}
             <li class="article-item">
                 <div class="article-title">
-                    <a href="/kindle/read/{{ item.id }}">{{ item.title or "Untitled" }}</a>
+                    <a href="/kindle/read/{{ item.id }}?from=shortlist{% if loop.index < shortlist_items|length %}&amp;next={{ shortlist_items[loop.index].id }}{% endif %}">{{ item.title or "Untitled" }}</a>
                 </div>
                 <div class="article-meta">
                     {{ item.source_url|extract_domain or "Unknown domain" }}
@@ -180,7 +180,7 @@
             {% for item in later_items %}
             <li class="article-item">
                 <div class="article-title">
-                    <a href="/kindle/read/{{ item.id }}">{{ item.title or "Untitled" }}</a>
+                    <a href="/kindle/read/{{ item.id }}?from=later{% if loop.index < later_items|length %}&amp;next={{ later_items[loop.index].id }}{% endif %}">{{ item.title or "Untitled" }}</a>
                 </div>
                 <div class="article-meta">
                     {{ item.source_url|extract_domain or "Unknown domain" }}

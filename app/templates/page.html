@@ -175,16 +175,23 @@
         a:visited {
             color: var(--link-visited);
         }
-        .article-footer {
+        .article-nav {
             position: relative;
             z-index: 10;
-            margin-top: 3em;
-            padding-top: 1em;
-            border-top: 2px solid var(--border-dark);
             text-align: center;
             font-size: 0.9em;
         }
-        .article-footer a {
+        .article-nav-top {
+            margin-bottom: 1em;
+            padding-bottom: 0.5em;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .article-nav-bottom {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 2px solid var(--border-dark);
+        }
+        .article-nav a {
             margin: 0 0.5em;
         }
         .article-header {
@@ -223,6 +230,27 @@
     <div class="zone-left" onclick="handleScroll(-window.innerHeight * 0.9)"></div>
     <div class="zone-right" onclick="handleScroll(window.innerHeight * 0.9)"></div>
 
+    <div class="article-nav article-nav-top">
+        <a href="{{ back_url }}">Back to list</a>
+        {% if is_feed %}
+            {% if next_url %}
+            &middot;
+            <a href="{{ next_url }}">Next</a>
+            {% endif %}
+        {% else %}
+            &middot;
+            <form class="archive-form" method="post" action="/kindle/archive/{{ doc_id }}">
+                <button type="submit" class="archive-button">Archive</button>
+            </form>
+            {% if next_url %}
+            &middot;
+            <form class="archive-form" method="post" action="/kindle/archive-next/{{ doc_id }}?from={{ from_list }}{% if next_url %}&amp;next={{ next_url.split('/')[-1].split('?')[0] }}{% endif %}">
+                <button type="submit" class="archive-button">Archive and next</button>
+            </form>
+            {% endif %}
+        {% endif %}
+    </div>
+
     <div class="article-header">
         <div class="article-title">{{ title }}</div>
         {% if author or source %}
@@ -238,12 +266,25 @@
         {{ content|safe }}
     </div>
 
-    <div class="article-footer">
-        <a href="/kindle/">Back to list</a>
-        &middot;
-        <form class="archive-form" method="post" action="/kindle/archive/{{ doc_id }}">
-            <button type="submit" class="archive-button">Archive</button>
-        </form>
+    <div class="article-nav article-nav-bottom">
+        <a href="{{ back_url }}">Back to list</a>
+        {% if is_feed %}
+            {% if next_url %}
+            &middot;
+            <a href="{{ next_url }}">Next</a>
+            {% endif %}
+        {% else %}
+            &middot;
+            <form class="archive-form" method="post" action="/kindle/archive/{{ doc_id }}">
+                <button type="submit" class="archive-button">Archive</button>
+            </form>
+            {% if next_url %}
+            &middot;
+            <form class="archive-form" method="post" action="/kindle/archive-next/{{ doc_id }}?from={{ from_list }}{% if next_url %}&amp;next={{ next_url.split('/')[-1].split('?')[0] }}{% endif %}">
+                <button type="submit" class="archive-button">Archive and next</button>
+            </form>
+            {% endif %}
+        {% endif %}
     </div>
 
     <script>
