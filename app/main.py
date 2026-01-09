@@ -150,18 +150,54 @@ async def list_home(request: Request):
         raise HTTPException(status_code=500, detail=f"Error fetching items: {str(e)}")
 
 
+def get_back_url(from_list: str) -> str:
+    """
+    Get the back URL based on the source list.
+
+    Args:
+        from_list: Source list identifier (e.g., 'feed', 'later', 'shortlist', 'random')
+
+    Returns:
+        URL to navigate back to the source list
+    """
+    if not from_list:
+        return "/kindle/"
+
+    from_list = from_list.lower()
+
+    if from_list == "feed":
+        return "/kindle/feed"
+    elif from_list == "random":
+        return "/kindle/random"
+    elif from_list in ("later", "shortlist", "new", "archive"):
+        return f"/kindle/list/{from_list}"
+    elif from_list.startswith("tag/"):
+        tag_name = from_list[4:]  # Remove 'tag/' prefix
+        return f"/kindle/tags/{tag_name}"
+    else:
+        return "/kindle/"
+
+
 @app.get("/read/{doc_id}", response_class=HTMLResponse)
-async def read_article(request: Request, doc_id: str):
+async def read_article(
+    request: Request,
+    doc_id: str,
+    next: str = None,
+):
     """
     Display a full article with JS tap-zone scrolling.
 
     Args:
         doc_id: Document ID
+        next: Optional next document ID for navigation
 
     Returns:
         HTML page with full article content
     """
     try:
+        # Get navigation context from query params
+        from_list = request.query_params.get("from", "")
+
         # Fetch document
         document = await client.get_document(doc_id)
         if not document:
@@ -174,6 +210,15 @@ async def read_article(request: Request, doc_id: str):
 
         # Sanitize HTML
         clean_html = sanitize_html(html_content)
+
+        # Compute navigation URLs
+        back_url = get_back_url(from_list)
+        is_feed = from_list.lower() == "feed" if from_list else False
+
+        # Build next article URL if available
+        next_url = None
+        if next:
+            next_url = f"/kindle/read/{next}?from={from_list}"
 
         # Render page
         is_dark = is_dark_mode()
@@ -189,6 +234,10 @@ async def read_article(request: Request, doc_id: str):
                 "content": clean_html,
                 "is_dark": is_dark,
                 "reading_progress": reading_progress,
+                "back_url": back_url,
+                "is_feed": is_feed,
+                "next_url": next_url,
+                "from_list": from_list,
             },
         )
     except HTTPException:
@@ -228,6 +277,38 @@ async def archive(doc_id: str):
     try:
         await client.archive_document(doc_id)
         return RedirectResponse(url="/kindle/", status_code=303)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error archiving document: {str(e)}")
+
+
+@app.post("/archive-next/{doc_id}", response_class=RedirectResponse)
+async def archive_and_next(request: Request, doc_id: str):
+    """
+    Archive a document and navigate to the next one.
+
+    Args:
+        doc_id: Document ID to archive
+        request: Request object to get query params (next, from)
+
+    Returns:
+        Redirect to next article or back to list if no next
+    """
+    try:
+        await client.archive_document(doc_id)
+
+        # Get next article URL from query params
+        next_doc_id = request.query_params.get("next", "")
+        from_list = request.query_params.get("from", "")
+
+        if next_doc_id:
+            # Redirect to next article with context
+            return RedirectResponse(
+                url=f"/kindle/read/{next_doc_id}?from={from_list}",
+                status_code=303
+            )
+        else:
+            # No next article, go back to list
+            return RedirectResponse(url=get_back_url(from_list), status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error archiving document: {str(e)}")
 

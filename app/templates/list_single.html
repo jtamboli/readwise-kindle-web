@@ -134,7 +134,7 @@
             {% for item in items %}
             <li class="article-item">
                 <div class="article-title">
-                    <a href="/kindle/read/{{ item.id }}">{{ item.title or "Untitled" }}</a>
+                    <a href="/kindle/read/{{ item.id }}?from={{ list_name|lower|replace('tag: ', 'tag/') }}{% if loop.index < items|length %}&amp;next={{ items[loop.index].id }}{% endif %}">{{ item.title or "Untitled" }}</a>
                 </div>
                 <div class="article-meta">
                     {{ item.source_url|extract_domain or "Unknown domain" }}
