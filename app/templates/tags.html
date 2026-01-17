@@ -26,8 +26,8 @@
             --border-color: #444444;
             --border-dark: #ffffff;
         }
-        /* iPad/tablet dark mode - uses red text for better visibility */
-        :root.ipad-dark {
+        /* Device dark mode (non-Kindle) - uses red text for better visibility on LCD/OLED screens */
+        :root.device-dark {
             --bg-color: #000000;
             --text-color: #cc0000;
             --link-color: #cc0000;
@@ -136,31 +136,29 @@
     {% endif %}
 
     <script>
-    // iPad/tablet dark mode detection using system preference
-    // On iPads, use the device's dark mode setting instead of sunrise/sunset
+    // System dark mode detection for non-Kindle devices (iPhones, iPads, Android, desktop browsers)
+    // On these devices, use the system dark mode preference instead of sunrise/sunset calculations
     var isKindle = /Kindle/i.test(navigator.userAgent);
-    var isIPad = /iPad/i.test(navigator.userAgent) ||
-                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    if (isIPad && !isKindle) {
+    if (!isKindle) {
         var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         var root = document.documentElement;
 
         // Remove server-side dark mode class
         root.classList.remove('dark');
 
-        // Apply iPad-specific dark mode with red text if system is in dark mode
+        // Apply device-specific dark mode with red text if system is in dark mode
         if (prefersDark) {
-            root.classList.add('ipad-dark');
+            root.classList.add('device-dark');
         }
 
         // Listen for system dark mode changes
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
             if (e.matches) {
                 root.classList.remove('dark');
-                root.classList.add('ipad-dark');
+                root.classList.add('device-dark');
             } else {
-                root.classList.remove('ipad-dark');
+                root.classList.remove('device-dark');
                 root.classList.remove('dark');
             }
         });
