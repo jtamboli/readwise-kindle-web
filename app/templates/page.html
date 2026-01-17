@@ -34,6 +34,20 @@
             --quote-border: #ffffff;
             --disabled-color: #ffffff;
         }
+        /* iPad/tablet dark mode - uses red text for better visibility */
+        :root.ipad-dark {
+            --bg-color: #000000;
+            --text-color: #cc0000;
+            --link-color: #cc0000;
+            --link-visited: #cc0000;
+            --link-hover: #ff0000;
+            --meta-color: #cc0000;
+            --border-color: #cc0000;
+            --border-dark: #cc0000;
+            --quote-color: #cc0000;
+            --quote-border: #cc0000;
+            --disabled-color: #990000;
+        }
         body {
             font-family: "Merriweather", Georgia, serif;
             margin: 1em;
@@ -288,12 +302,43 @@
     </div>
 
     <script>
+    // Device detection
+    var isKindle = /Kindle/i.test(navigator.userAgent);
+    var isIPad = /iPad/i.test(navigator.userAgent) ||
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // iPad/tablet dark mode detection using system preference
+    // On iPads, use the device's dark mode setting instead of sunrise/sunset
+    if (isIPad && !isKindle) {
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var root = document.documentElement;
+
+        // Remove server-side dark mode class
+        root.classList.remove('dark');
+
+        // Apply iPad-specific dark mode with red text if system is in dark mode
+        if (prefersDark) {
+            root.classList.add('ipad-dark');
+        }
+
+        // Listen for system dark mode changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            if (e.matches) {
+                root.classList.remove('dark');
+                root.classList.add('ipad-dark');
+            } else {
+                root.classList.remove('ipad-dark');
+                root.classList.remove('dark');
+            }
+        });
+    }
+
     // E-ink screen refresh logic
     // Kindle does full refresh every 5-6 page turns to clear ghosting
     // Less frequent in dark mode since dark backgrounds show less ghosting
     // Only enable on Kindle devices (other devices don't need e-ink refresh)
-    var isKindle = /Kindle/i.test(navigator.userAgent);
-    var isDarkMode = document.documentElement.classList.contains('dark');
+    var isDarkMode = document.documentElement.classList.contains('dark') ||
+                     document.documentElement.classList.contains('ipad-dark');
     var REFRESH_INTERVAL = isDarkMode ? 8 : 6;
 
     function flashScreen() {
