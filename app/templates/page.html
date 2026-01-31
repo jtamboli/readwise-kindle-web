@@ -403,11 +403,54 @@
         }
     }
 
-    // Progress tracking beacon (every 30 seconds)
+    // Progress tracking
+    var lastSentProgress = -1;
+
+    function getCurrentProgress() {
+        return window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
+    }
+
+    function sendProgress(useBeacon) {
+        var p = Math.min(1, getCurrentProgress()).toFixed(2);
+        // Only send if progress changed significantly (> 1%)
+        if (Math.abs(parseFloat(p) - lastSentProgress) < 0.01) return;
+
+        var url = '/kindle/progress/{{ doc_id }}?p=' + p;
+        if (useBeacon && navigator.sendBeacon) {
+            // Use sendBeacon for reliable delivery during page unload
+            navigator.sendBeacon(url);
+        } else {
+            // Use image beacon for regular updates
+            new Image().src = url;
+        }
+        lastSentProgress = parseFloat(p);
+    }
+
+    // Regular progress beacon (every 30 seconds)
     setInterval(function() {
-        var p = window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
-        new Image().src = '/kindle/progress/{{ doc_id }}?p=' + Math.min(1, p).toFixed(2);
+        sendProgress(false);
     }, 30000);
+
+    // Send progress when page is about to unload (navigating away, closing tab)
+    window.addEventListener('beforeunload', function() {
+        sendProgress(true);
+    });
+
+    // Send progress when page becomes hidden (switching tabs, switching apps)
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') {
+            sendProgress(true);
+        }
+    });
+
+    // Send progress when user finishes scrolling (debounced)
+    var scrollTimeout;
+    window.addEventListener('scroll', function() {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(function() {
+            sendProgress(false);
+        }, 2000);
+    });
     </script>
 </body>
 </html>
