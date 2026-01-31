@@ -132,11 +132,69 @@
             color: var(--meta-color);
             margin-bottom: 1em;
         }
+        /* Sort menu styles */
+        .sort-container {
+            position: relative;
+        }
+        .sort-button {
+            color: var(--link-color);
+            text-decoration: none;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            font-size: inherit;
+            padding: 0;
+        }
+        .sort-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            min-width: 150px;
+            z-index: 100;
+            margin-top: 0.3em;
+        }
+        .sort-menu.open {
+            display: block;
+        }
+        .sort-menu a {
+            display: block;
+            padding: 0.5em 1em;
+            color: var(--link-color);
+            text-decoration: none;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .sort-menu a:last-child {
+            border-bottom: none;
+        }
+        .sort-menu a:hover,
+        .sort-menu a.active {
+            background-color: var(--border-color);
+        }
+        .sort-menu a.active::before {
+            content: "\2713 ";
+        }
+        .nav-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
-    <div class="back-link">
+    <div class="back-link nav-row">
         <a href="/kindle/">&larr; Back to Home</a>
+        <div class="sort-container">
+            <button class="sort-button" id="sortButton">Sort &#9662;</button>
+            <div class="sort-menu" id="sortMenu">
+                {% for key, label in sort_options.items() %}
+                <a href="#" data-sort="{{ key }}"{% if key == sort_order %} class="active"{% endif %}>{{ label }}</a>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
     <h1>{{ list_name }}</h1>
@@ -194,6 +252,37 @@
             }
         });
     }
+
+    // Sort menu functionality
+    (function() {
+        var sortButton = document.getElementById('sortButton');
+        var sortMenu = document.getElementById('sortMenu');
+
+        if (sortButton && sortMenu) {
+            // Toggle menu on button click
+            sortButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                sortMenu.classList.toggle('open');
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function() {
+                sortMenu.classList.remove('open');
+            });
+
+            // Handle sort option selection
+            sortMenu.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    e.preventDefault();
+                    var sortOrder = e.target.getAttribute('data-sort');
+                    // Set cookie for 1 year
+                    document.cookie = 'sort_order=' + sortOrder + '; path=/; max-age=31536000';
+                    // Reload page to apply new sort
+                    window.location.reload();
+                }
+            });
+        }
+    })();
     </script>
 </body>
 </html>

@@ -51,6 +51,21 @@ def filter_seen_articles(items: List[Dict]) -> List[Dict]:
     return [item for item in items if not item.get("seen")]
 
 
+# Available sort options with their display names
+SORT_OPTIONS = {
+    "recent_activity": "Recent Activity",
+    "saved_at": "Date Saved",
+    "created_at": "Date Created",
+    "updated_at": "Date Updated",
+    "published_date": "Date Published",
+    "first_opened_at": "First Opened",
+    "last_opened_at": "Last Opened",
+    "last_moved_at": "Last Moved",
+}
+
+DEFAULT_SORT = "recent_activity"
+
+
 def sort_by_recent_activity(items: List[Dict]) -> List[Dict]:
     """
     Sort items by last_opened_at (most recent first), falling back to last_moved_at.
@@ -69,6 +84,43 @@ def sort_by_recent_activity(items: List[Dict]) -> List[Dict]:
         return item.get("last_opened_at") or item.get("last_moved_at", "")
 
     return sorted(items, key=sort_key, reverse=True)
+
+
+def sort_by_field(items: List[Dict], field: str) -> List[Dict]:
+    """
+    Sort items by a specific date field (most recent first).
+
+    Args:
+        items: List of document dictionaries
+        field: Field name to sort by
+
+    Returns:
+        Sorted list of documents
+    """
+    def sort_key(item: Dict) -> str:
+        return item.get(field) or ""
+
+    return sorted(items, key=sort_key, reverse=True)
+
+
+def sort_items(items: List[Dict], sort_order: str = None) -> List[Dict]:
+    """
+    Sort items by the specified sort order.
+
+    Args:
+        items: List of document dictionaries
+        sort_order: Sort order key from SORT_OPTIONS
+
+    Returns:
+        Sorted list of documents
+    """
+    if not sort_order or sort_order not in SORT_OPTIONS:
+        sort_order = DEFAULT_SORT
+
+    if sort_order == "recent_activity":
+        return sort_by_recent_activity(items)
+    else:
+        return sort_by_field(items, sort_order)
 
 
 def get_article_tags(article: Dict) -> List[str]:

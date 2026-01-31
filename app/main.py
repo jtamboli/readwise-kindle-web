@@ -9,9 +9,11 @@ from fastapi.templating import Jinja2Templates
 from kindle_reader.api_client import client, VALID_LOCATIONS
 from kindle_reader.filters import (
     KINDLE_HIDDEN_TAG,
+    SORT_OPTIONS,
+    DEFAULT_SORT,
     filter_hidden_articles,
     filter_seen_articles,
-    sort_by_recent_activity,
+    sort_items,
     get_article_tags,
     filter_by_tag,
 )
@@ -84,6 +86,8 @@ async def list_home(request: Request):
     """
     try:
         is_dark = is_dark_mode()
+        sort_order = request.cookies.get("sort_order", DEFAULT_SORT)
+
         shortlist_items = await client.get_items_by_location("shortlist", limit=5)
         later_items = await client.get_items_by_location("later", limit=20)
 
@@ -91,9 +95,9 @@ async def list_home(request: Request):
         shortlist_items = filter_hidden_articles(shortlist_items)
         later_items = filter_hidden_articles(later_items)
 
-        # Sort by recent activity (last_opened_at with fallback to last_moved_at)
-        shortlist_items = sort_by_recent_activity(shortlist_items)
-        later_items = sort_by_recent_activity(later_items)
+        # Sort by user preference
+        shortlist_items = sort_items(shortlist_items, sort_order)
+        later_items = sort_items(later_items, sort_order)
 
         return templates.TemplateResponse(
             "list.html",
@@ -102,6 +106,8 @@ async def list_home(request: Request):
                 "shortlist_items": shortlist_items,
                 "later_items": later_items,
                 "is_dark": is_dark,
+                "sort_order": sort_order,
+                "sort_options": SORT_OPTIONS,
             },
         )
     except Exception as e:
@@ -290,13 +296,14 @@ async def list_by_location(request: Request, location: str):
 
     try:
         is_dark = is_dark_mode()
+        sort_order = request.cookies.get("sort_order", DEFAULT_SORT)
         items = await client.get_items_by_location(location, limit=100)
 
         # Filter out hidden articles
         items = filter_hidden_articles(items)
 
-        # Sort by recent activity (last_opened_at with fallback to last_moved_at)
-        items = sort_by_recent_activity(items)
+        # Sort by user preference
+        items = sort_items(items, sort_order)
 
         # Capitalize location for display
         display_name = location.capitalize()
@@ -308,6 +315,8 @@ async def list_by_location(request: Request, location: str):
                 "items": items,
                 "list_name": display_name,
                 "is_dark": is_dark,
+                "sort_order": sort_order,
+                "sort_options": SORT_OPTIONS,
             },
         )
     except Exception as e:
@@ -324,6 +333,7 @@ async def list_feed(request: Request):
     """
     try:
         is_dark = is_dark_mode()
+        sort_order = request.cookies.get("sort_order", DEFAULT_SORT)
         items = await client.get_items_by_location("feed", limit=100)
 
         # Filter out hidden articles
@@ -332,8 +342,8 @@ async def list_feed(request: Request):
         # Filter out seen articles
         items = filter_seen_articles(items)
 
-        # Sort by recent activity (last_opened_at with fallback to last_moved_at)
-        items = sort_by_recent_activity(items)
+        # Sort by user preference
+        items = sort_items(items, sort_order)
 
         return templates.TemplateResponse(
             "list_single.html",
@@ -342,6 +352,8 @@ async def list_feed(request: Request):
                 "items": items,
                 "list_name": "Feed",
                 "is_dark": is_dark,
+                "sort_order": sort_order,
+                "sort_options": SORT_OPTIONS,
             },
         )
     except Exception as e:
@@ -361,6 +373,7 @@ async def list_random(request: Request):
     """
     try:
         is_dark = is_dark_mode()
+        sort_order = request.cookies.get("sort_order", DEFAULT_SORT)
 
         # Fetch articles from both later and shortlist
         later_items = await client.get_items_by_location("later", limit=100)
@@ -388,6 +401,8 @@ async def list_random(request: Request):
                 "items": random_items,
                 "list_name": "Random",
                 "is_dark": is_dark,
+                "sort_order": sort_order,
+                "sort_options": SORT_OPTIONS,
             },
         )
     except Exception as e:
@@ -404,6 +419,7 @@ async def list_tags(request: Request):
     """
     try:
         is_dark = is_dark_mode()
+        sort_order = request.cookies.get("sort_order", DEFAULT_SORT)
 
         # Get library articles to extract tags
         all_articles = await client.get_library_articles(limit_per_location=100)
@@ -424,6 +440,8 @@ async def list_tags(request: Request):
                 "request": request,
                 "tags": tags,
                 "is_dark": is_dark,
+                "sort_order": sort_order,
+                "sort_options": SORT_OPTIONS,
             },
         )
     except Exception as e:
@@ -443,6 +461,7 @@ async def list_articles_by_tag(request: Request, tag_name: str):
     """
     try:
         is_dark = is_dark_mode()
+        sort_order = request.cookies.get("sort_order", DEFAULT_SORT)
 
         # Get library articles and filter by tag using shared utility
         all_articles = await client.get_library_articles(limit_per_location=100)
@@ -453,8 +472,8 @@ async def list_articles_by_tag(request: Request, tag_name: str):
         # Filter out hidden articles
         filtered_items = filter_hidden_articles(filtered_items)
 
-        # Sort by recent activity
-        filtered_items = sort_by_recent_activity(filtered_items)
+        # Sort by user preference
+        filtered_items = sort_items(filtered_items, sort_order)
 
         return templates.TemplateResponse(
             "list_single.html",
@@ -463,6 +482,8 @@ async def list_articles_by_tag(request: Request, tag_name: str):
                 "items": filtered_items,
                 "list_name": f"Tag: {tag_name}",
                 "is_dark": is_dark,
+                "sort_order": sort_order,
+                "sort_options": SORT_OPTIONS,
             },
         )
     except Exception as e:
