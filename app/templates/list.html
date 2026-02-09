@@ -196,6 +196,18 @@
         .sort-menu a.active::before {
             content: "\2713 ";
         }
+        .section-toggle {
+            cursor: pointer;
+            display: inline-block;
+            font-size: 0.8em;
+            margin-right: 0.3em;
+        }
+        .section-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+        .shortlist-collapsed {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -217,7 +229,11 @@
         </div>
     </div>
 
-    <h2><a href="/kindle/list/shortlist">Shortlist</a></h2>
+    <h2>
+        <span id="shortlistToggle" class="section-toggle">&#9660;</span>
+        <a href="/kindle/list/shortlist">Shortlist</a>
+    </h2>
+    <div id="shortlistContent">
     {% if shortlist_items %}
         <ul class="article-list">
             {% for item in shortlist_items %}
@@ -241,6 +257,7 @@
     {% else %}
         <p class="section-empty">No items in Shortlist</p>
     {% endif %}
+    </div>
 
     <h2 id="later"><a href="/kindle/list/later">Later</a></h2>
     {% if later_items %}
@@ -295,6 +312,44 @@
             }
         });
     }
+
+    // Shortlist collapse/expand functionality
+    (function() {
+        var toggle = document.getElementById('shortlistToggle');
+        var content = document.getElementById('shortlistContent');
+        if (!toggle || !content) return;
+
+        function getCookie(name) {
+            var match = document.cookie.match('(^|; )' + name + '=([^;]*)');
+            return match ? match[2] : null;
+        }
+
+        function collapse() {
+            content.classList.add('shortlist-collapsed');
+            toggle.classList.add('collapsed');
+        }
+
+        function expand() {
+            content.classList.remove('shortlist-collapsed');
+            toggle.classList.remove('collapsed');
+        }
+
+        // Restore saved state
+        if (getCookie('shortlist_collapsed') === '1') {
+            collapse();
+        }
+
+        toggle.addEventListener('click', function() {
+            var isCollapsed = content.classList.contains('shortlist-collapsed');
+            if (isCollapsed) {
+                expand();
+                document.cookie = 'shortlist_collapsed=0; path=/; max-age=31536000';
+            } else {
+                collapse();
+                document.cookie = 'shortlist_collapsed=1; path=/; max-age=31536000';
+            }
+        });
+    })();
 
     // Sort menu functionality
     (function() {
