@@ -302,6 +302,10 @@ async def list_by_location(request: Request, location: str):
         # Filter out hidden articles
         items = filter_hidden_articles(items)
 
+        # Filter out seen articles in Feed view
+        if location == "feed":
+            items = filter_seen_articles(items)
+
         # Sort by user preference
         items = sort_items(items, sort_order)
 
