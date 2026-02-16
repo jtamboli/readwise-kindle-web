@@ -20,6 +20,8 @@
             --quote-color: #000000;
             --quote-border: #000000;
             --disabled-color: #000000;
+            --code-bg: #2d2d2d;
+            --code-text: #e0e0e0;
         }
         :root.dark {
             --bg-color: #000000;
@@ -33,6 +35,8 @@
             --quote-color: #ffffff;
             --quote-border: #ffffff;
             --disabled-color: #ffffff;
+            --code-bg: #333333;
+            --code-text: #e0e0e0;
         }
         /* Device dark mode (non-Kindle) - uses red text for better visibility on LCD/OLED screens */
         :root.device-dark {
@@ -47,6 +51,8 @@
             --quote-color: #cc0000;
             --quote-border: #cc0000;
             --disabled-color: #990000;
+            --code-bg: #1a0000;
+            --code-text: #ff6666;
         }
         :root.device-dark img {
             filter: sepia(1) hue-rotate(-50deg) saturate(4) brightness(0.5);
@@ -124,7 +130,8 @@
         pre {
             font-family: "Courier New", Courier, monospace;
             font-size: 0.85em;
-            background-color: var(--border-color);
+            background-color: var(--code-bg);
+            color: var(--code-text);
             padding: 1em;
             margin: 1em 0;
             overflow-x: auto;
@@ -134,7 +141,8 @@
         code {
             font-family: "Courier New", Courier, monospace;
             font-size: 0.9em;
-            background-color: var(--border-color);
+            background-color: var(--code-bg);
+            color: var(--code-text);
             padding: 0.1em 0.3em;
             border-radius: 3px;
         }
