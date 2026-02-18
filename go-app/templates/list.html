@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en"{{if .IsDark}} class="dark"{{end}}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Readwise Reader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --link-color: #000000;
+            --link-visited: #000000;
+            --meta-color: #666666;
+            --border-color: #dddddd;
+            --border-dark: #000000;
+        }
+        :root.dark {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --link-color: #ffffff;
+            --link-visited: #ffffff;
+            --meta-color: #999999;
+            --border-color: #444444;
+            --border-dark: #ffffff;
+        }
+        body {
+            font-family: "Merriweather", Georgia, serif;
+            margin: 1em;
+            line-height: 1.5;
+            font-size: 16px;
+            max-width: 600px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            /* E-ink optimizations */
+            text-align: justify;
+            hyphens: auto;
+            -webkit-hyphens: auto;
+            text-justify: inter-word;
+            letter-spacing: 0.015em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        h1 {
+            font-size: 1.5em;
+            margin-bottom: 0.5em;
+            border-bottom: 2px solid var(--border-dark);
+            padding-bottom: 0.3em;
+        }
+        h2 {
+            font-size: 1.3em;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        h2 a {
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        h2 a:hover {
+            text-decoration: underline;
+        }
+        .nav-links {
+            margin-bottom: 1em;
+            padding-bottom: 0.5em;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+        }
+        .nav-links a {
+            color: var(--link-color);
+            text-decoration: none;
+            margin-right: 1em;
+        }
+        .nav-links a:visited {
+            color: var(--link-visited);
+        }
+        .nav-links .right-link {
+            margin-left: auto;
+            margin-right: 0;
+        }
+        .article-list {
+            list-style: none;
+            padding: 0;
+        }
+        .article-item {
+            margin-bottom: 1.5em;
+            padding-bottom: 1em;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .article-item:last-child {
+            border-bottom: none;
+        }
+        .article-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 0.3em;
+        }
+        .article-title a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+        .article-title a:visited {
+            color: var(--link-visited);
+        }
+        .article-meta {
+            font-size: 0.9em;
+            color: var(--meta-color);
+            margin-bottom: 0.3em;
+        }
+        .hide-link {
+            font-size: 0.85em;
+            color: var(--meta-color);
+            text-decoration: underline;
+            margin-top: 0.3em;
+            display: inline-block;
+        }
+        .hide-link a {
+            color: var(--meta-color);
+            text-decoration: underline;
+        }
+        .hide-link a:visited {
+            color: var(--meta-color);
+        }
+        .article-summary {
+            font-size: 0.95em;
+            color: var(--text-color);
+        }
+        .empty-message {
+            text-align: center;
+            color: var(--meta-color);
+            margin-top: 2em;
+        }
+        .section-empty {
+            color: var(--meta-color);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Readwise Reader</h1>
+
+    <div class="nav-links">
+        <a href="#later">Later</a>
+        <a href="/kindle/tags">Tags</a>
+        <a href="/kindle/random">Random</a>
+        <a href="/kindle/feed">Feed</a>
+        <a href="/kindle/refresh" class="right-link">Force refresh</a>
+    </div>
+
+    <h2><a href="/kindle/list/shortlist">Shortlist</a></h2>
+    {{if .ShortlistItems}}
+        <ul class="article-list">
+            {{range .ShortlistItems}}
+            <li class="article-item">
+                <div class="article-title">
+                    <a href="/kindle/read/{{index . "id"}}">{{if index . "title"}}{{index . "title"}}{{else}}Untitled{{end}}</a>
+                </div>
+                <div class="article-meta">
+                    {{with index . "source_url"}}{{extractDomain .}}{{else}}Unknown domain{{end}}
+                    {{with index . "word_count"}} &middot; {{wordsToMinutes .}} min{{end}}
+                </div>
+                {{with index . "summary"}}
+                <div class="article-summary">{{truncate . 150}}</div>
+                {{end}}
+                <div class="hide-link">
+                    <a href="/kindle/hide/{{index . "id"}}">Hide from Kindle</a>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+    {{else}}
+        <p class="section-empty">No items in Shortlist</p>
+    {{end}}
+
+    <h2 id="later"><a href="/kindle/list/later">Later</a></h2>
+    {{if .LaterItems}}
+        <ul class="article-list">
+            {{range .LaterItems}}
+            <li class="article-item">
+                <div class="article-title">
+                    <a href="/kindle/read/{{index . "id"}}">{{if index . "title"}}{{index . "title"}}{{else}}Untitled{{end}}</a>
+                </div>
+                <div class="article-meta">
+                    {{with index . "source_url"}}{{extractDomain .}}{{else}}Unknown domain{{end}}
+                    {{with index . "word_count"}} &middot; {{wordsToMinutes .}} min{{end}}
+                </div>
+                {{with index . "summary"}}
+                <div class="article-summary">{{truncate . 150}}</div>
+                {{end}}
+                <div class="hide-link">
+                    <a href="/kindle/hide/{{index . "id"}}">Hide from Kindle</a>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+    {{else}}
+        <p class="section-empty">No items in Later</p>
+    {{end}}
+</body>
+</html>

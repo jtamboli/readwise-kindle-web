@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en"{% if is_dark %} class="dark"{% endif %}>
+<html lang="en"{{if .IsDark}} class="dark"{{end}}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
+    <title>{{.Title}}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
@@ -20,8 +20,6 @@
             --quote-color: #000000;
             --quote-border: #000000;
             --disabled-color: #000000;
-            --code-bg: #2d2d2d;
-            --code-text: #e0e0e0;
         }
         :root.dark {
             --bg-color: #000000;
@@ -35,27 +33,6 @@
             --quote-color: #ffffff;
             --quote-border: #ffffff;
             --disabled-color: #ffffff;
-            --code-bg: #333333;
-            --code-text: #e0e0e0;
-        }
-        /* Device dark mode (non-Kindle) - uses red text for better visibility on LCD/OLED screens */
-        :root.device-dark {
-            --bg-color: #000000;
-            --text-color: #cc0000;
-            --link-color: #cc0000;
-            --link-visited: #cc0000;
-            --link-hover: #ff0000;
-            --meta-color: #cc0000;
-            --border-color: #cc0000;
-            --border-dark: #cc0000;
-            --quote-color: #cc0000;
-            --quote-border: #cc0000;
-            --disabled-color: #990000;
-            --code-bg: #1a0000;
-            --code-text: #ff6666;
-        }
-        :root.device-dark img {
-            filter: sepia(1) hue-rotate(-50deg) saturate(4) brightness(0.5);
         }
         body {
             font-family: "Merriweather", Georgia, serif;
@@ -130,8 +107,7 @@
         pre {
             font-family: "Courier New", Courier, monospace;
             font-size: 0.85em;
-            background-color: var(--code-bg);
-            color: var(--code-text);
+            background-color: var(--border-color);
             padding: 1em;
             margin: 1em 0;
             overflow-x: auto;
@@ -141,8 +117,7 @@
         code {
             font-family: "Courier New", Courier, monospace;
             font-size: 0.9em;
-            background-color: var(--code-bg);
-            color: var(--code-text);
+            background-color: var(--border-color);
             padding: 0.1em 0.3em;
             border-radius: 3px;
         }
@@ -200,24 +175,16 @@
         a:visited {
             color: var(--link-visited);
         }
-        .article-nav {
+        .article-footer {
             position: relative;
             z-index: 10;
-            text-align: center;
-            font-size: 0.9em;
-        }
-        .article-nav-top {
-            margin-bottom: 1em;
-            padding-bottom: 0.5em;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .article-nav-bottom {
             margin-top: 3em;
             padding-top: 1em;
             border-top: 2px solid var(--border-dark);
+            text-align: center;
+            font-size: 0.9em;
         }
-        .article-nav a,
-        .article-nav .archive-form {
+        .article-footer a {
             margin: 0 0.5em;
         }
         .article-header {
@@ -256,99 +223,36 @@
     <div class="zone-left" onclick="handleScroll(-window.innerHeight * 0.9)"></div>
     <div class="zone-right" onclick="handleScroll(window.innerHeight * 0.9)"></div>
 
-    <div class="article-nav article-nav-top">
-        <a href="{{ back_url }}">Back to list</a>
-        {% if is_feed %}
-            {% if next_url %}
-            &middot;
-            <a href="{{ next_url }}">Next</a>
-            {% endif %}
-        {% else %}
-            &middot;
-            <form class="archive-form" method="post" action="/kindle/archive/{{ doc_id }}">
-                <button type="submit" class="archive-button">Archive</button>
-            </form>
-            {% if next_url %}
-            &middot;
-            <form class="archive-form" method="post" action="/kindle/archive-next/{{ doc_id }}?from={{ from_list }}{% if next_url %}&amp;next={{ next_url.split('/')[-1].split('?')[0] }}{% endif %}">
-                <button type="submit" class="archive-button">Archive and next</button>
-            </form>
-            {% endif %}
-        {% endif %}
-    </div>
-
     <div class="article-header">
-        <div class="article-title">{{ title }}</div>
-        {% if author or source %}
+        <div class="article-title">{{.Title}}</div>
+        {{if or .Author .Source}}
         <div class="article-meta">
-            {% if author %}{{ author }}{% endif %}
-            {% if author and source %} &middot; {% endif %}
-            {% if source %}{{ source }}{% endif %}
+            {{with .Author}}{{.}}{{end}}
+            {{if and .Author .Source}} &middot; {{end}}
+            {{with .Source}}{{.}}{{end}}
         </div>
-        {% endif %}
+        {{end}}
     </div>
 
     <div class="content">
-        {{ content|safe }}
+        {{safeHTML .Content}}
     </div>
 
-    <div class="article-nav article-nav-bottom">
-        <a href="{{ back_url }}">Back to list</a>
-        {% if is_feed %}
-            {% if next_url %}
-            &middot;
-            <a href="{{ next_url }}">Next</a>
-            {% endif %}
-        {% else %}
-            &middot;
-            <form class="archive-form" method="post" action="/kindle/archive/{{ doc_id }}">
-                <button type="submit" class="archive-button">Archive</button>
-            </form>
-            {% if next_url %}
-            &middot;
-            <form class="archive-form" method="post" action="/kindle/archive-next/{{ doc_id }}?from={{ from_list }}{% if next_url %}&amp;next={{ next_url.split('/')[-1].split('?')[0] }}{% endif %}">
-                <button type="submit" class="archive-button">Archive and next</button>
-            </form>
-            {% endif %}
-        {% endif %}
+    <div class="article-footer">
+        <a href="/kindle/">Back to list</a>
+        &middot;
+        <form class="archive-form" method="post" action="/kindle/archive/{{.DocID}}">
+            <button type="submit" class="archive-button">Archive</button>
+        </form>
     </div>
 
     <script>
-    // Device detection
-    var isKindle = /Kindle/i.test(navigator.userAgent);
-
-    // System dark mode detection for non-Kindle devices (iPhones, iPads, Android, desktop browsers)
-    // On these devices, use the system dark mode preference instead of sunrise/sunset calculations
-    if (!isKindle) {
-        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var root = document.documentElement;
-
-        // Remove server-side dark mode class
-        root.classList.remove('dark');
-
-        // Apply device-specific dark mode with red text if system is in dark mode
-        if (prefersDark) {
-            root.classList.add('device-dark');
-        }
-
-        // Listen for system dark mode changes
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-            if (e.matches) {
-                root.classList.remove('dark');
-                root.classList.add('device-dark');
-            } else {
-                root.classList.remove('device-dark');
-                root.classList.remove('dark');
-            }
-        });
-    }
-
     // E-ink screen refresh logic
     // Kindle does full refresh every 5-6 page turns to clear ghosting
     // Less frequent in dark mode since dark backgrounds show less ghosting
     // Only enable on Kindle devices (other devices don't need e-ink refresh)
-    var isDarkMode = document.documentElement.classList.contains('dark') ||
-                     document.documentElement.classList.contains('device-dark');
+    var isKindle = /Kindle/i.test(navigator.userAgent);
+    var isDarkMode = document.documentElement.classList.contains('dark');
     var REFRESH_INTERVAL = isDarkMode ? 8 : 6;
 
     function flashScreen() {
@@ -404,7 +308,7 @@
     }
 
     // Scroll to saved reading progress position
-    var savedProgress = {{ reading_progress }};
+    var savedProgress = {{.ReadingProgress}};
     if (savedProgress > 0) {
         var scrollableHeight = document.body.scrollHeight - window.innerHeight;
         if (scrollableHeight > 0) {
@@ -412,54 +316,11 @@
         }
     }
 
-    // Progress tracking
-    var lastSentProgress = -1;
-
-    function getCurrentProgress() {
-        return window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
-    }
-
-    function sendProgress(useBeacon) {
-        var p = Math.min(1, getCurrentProgress()).toFixed(2);
-        // Only send if progress changed significantly (> 1%)
-        if (Math.abs(parseFloat(p) - lastSentProgress) < 0.01) return;
-
-        var url = '/kindle/progress/{{ doc_id }}?p=' + p;
-        if (useBeacon && navigator.sendBeacon) {
-            // Use sendBeacon for reliable delivery during page unload
-            navigator.sendBeacon(url);
-        } else {
-            // Use image beacon for regular updates
-            new Image().src = url;
-        }
-        lastSentProgress = parseFloat(p);
-    }
-
-    // Regular progress beacon (every 30 seconds)
+    // Progress tracking beacon (every 30 seconds)
     setInterval(function() {
-        sendProgress(false);
+        var p = window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
+        new Image().src = '/kindle/progress/{{.DocID}}?p=' + Math.min(1, p).toFixed(2);
     }, 30000);
-
-    // Send progress when page is about to unload (navigating away, closing tab)
-    window.addEventListener('beforeunload', function() {
-        sendProgress(true);
-    });
-
-    // Send progress when page becomes hidden (switching tabs, switching apps)
-    document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'hidden') {
-            sendProgress(true);
-        }
-    });
-
-    // Send progress when user finishes scrolling (debounced)
-    var scrollTimeout;
-    window.addEventListener('scroll', function() {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(function() {
-            sendProgress(false);
-        }, 2000);
-    });
     </script>
 </body>
 </html>

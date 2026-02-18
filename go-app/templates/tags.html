@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en"{{if .IsDark}} class="dark"{{end}}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tags - Readwise Reader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --link-color: #000000;
+            --link-visited: #000000;
+            --meta-color: #666666;
+            --border-color: #dddddd;
+            --border-dark: #000000;
+        }
+        :root.dark {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --link-color: #ffffff;
+            --link-visited: #ffffff;
+            --meta-color: #999999;
+            --border-color: #444444;
+            --border-dark: #ffffff;
+        }
+        body {
+            font-family: "Merriweather", Georgia, serif;
+            margin: 1em;
+            line-height: 1.5;
+            font-size: 16px;
+            max-width: 600px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            /* E-ink optimizations */
+            text-align: justify;
+            hyphens: auto;
+            -webkit-hyphens: auto;
+            text-justify: inter-word;
+            letter-spacing: 0.015em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        h1 {
+            font-size: 1.5em;
+            margin-bottom: 0.5em;
+            border-bottom: 2px solid var(--border-dark);
+            padding-bottom: 0.3em;
+        }
+        .back-link {
+            margin-bottom: 1em;
+            padding-bottom: 0.5em;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .back-link a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+        .back-link a:visited {
+            color: var(--link-visited);
+        }
+        .tag-list {
+            list-style: none;
+            padding: 0;
+        }
+        .tag-item {
+            margin-bottom: 1em;
+            padding-bottom: 0.8em;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .tag-item:last-child {
+            border-bottom: none;
+        }
+        .tag-name {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        .tag-name a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+        .tag-name a:visited {
+            color: var(--link-visited);
+        }
+        .tag-count {
+            font-size: 0.9em;
+            color: var(--meta-color);
+            margin-left: 0.5em;
+        }
+        .empty-message {
+            text-align: center;
+            color: var(--meta-color);
+            margin-top: 2em;
+        }
+        .count {
+            font-size: 0.9em;
+            color: var(--meta-color);
+            margin-bottom: 1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="/kindle/">&larr; Back to Home</a>
+    </div>
+
+    <h1>Tags</h1>
+
+    {{if .Tags}}
+        <p class="count">{{len .Tags}} tag{{if ne (len .Tags) 1}}s{{end}}</p>
+        <ul class="tag-list">
+            {{range .Tags}}
+            <li class="tag-item">
+                <div class="tag-name">
+                    <a href="/kindle/tags/{{.Name}}">{{.Name}}</a>
+                    <span class="tag-count">({{.Count}} article{{if ne .Count 1}}s{{end}})</span>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+    {{else}}
+        <p class="empty-message">No tags found</p>
+    {{end}}
+</body>
+</html>
