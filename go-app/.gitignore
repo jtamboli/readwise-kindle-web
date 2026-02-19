@@ -1,9 +1,0 @@
-# Binary
-kindle-reader
-
-# IDE
-.idea/
-.vscode/
-
-# Environment
-.env
