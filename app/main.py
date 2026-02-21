@@ -1,5 +1,4 @@
 """FastAPI application for Readwise Kindle web reader."""
-import asyncio
 import random
 from urllib.parse import urlparse
 from fastapi import FastAPI, Request, HTTPException
@@ -223,7 +222,7 @@ async def update_progress(doc_id: str, p: float = 0):
         1x1 transparent GIF
     """
     progress = min(1.0, max(0.0, p))
-    asyncio.create_task(client.update_reading_progress(doc_id, progress))
+    client.update_reading_progress(doc_id, progress)
     return Response(content=TRANSPARENT_GIF, media_type="image/gif")
 
 

@@ -150,32 +150,20 @@ class ReadwiseClient:
             logger.info(f"Cached document {doc_id}")
             return document
 
-    async def update_reading_progress(self, doc_id: str, progress: float):
+    def update_reading_progress(self, doc_id: str, progress: float):
         """
-        Update reading progress for a document (fire-and-forget).
+        Update reading progress for a document locally.
+
+        The Readwise public API doesn't support writing reading_progress
+        (it's read-only), so we only update the local cache.
 
         Args:
             doc_id: Document ID
             progress: Reading progress (0.0 to 1.0)
         """
-        logger.info(f"Updating reading progress for document {doc_id} to {progress:.1%}")
-
-        try:
-            async with httpx.AsyncClient() as client:
-                logger.info(f"  → API request: PATCH /update/{doc_id}/ (reading_progress={progress:.2f})")
-
-                response = await client.patch(
-                    f"{self.base_url}/update/{doc_id}/",
-                    headers=self.headers,
-                    json={"reading_progress": progress},
-                    timeout=10.0,
-                )
-                response.raise_for_status()
-
-                logger.info(f"  ← Progress updated successfully")
-        except Exception as e:
-            # Log error but don't raise (fire-and-forget)
-            logger.warning(f"Error updating reading progress for {doc_id}: {e}")
+        if doc_id in document_cache:
+            document_cache[doc_id]["reading_progress"] = progress
+            logger.info(f"Updated cached reading progress for {doc_id} to {progress:.1%}")
 
     async def archive_document(self, doc_id: str):
         """
