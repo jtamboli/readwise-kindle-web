@@ -350,7 +350,7 @@
     // Only enable on Kindle devices (other devices don't need e-ink refresh)
     var isDarkMode = document.documentElement.classList.contains('dark') ||
                      document.documentElement.classList.contains('device-dark');
-    var REFRESH_INTERVAL = isDarkMode ? 8 : 6;
+    var REFRESH_INTERVAL = isDarkMode ? 16 : 6;
 
     function flashScreen() {
         // Save current colors
