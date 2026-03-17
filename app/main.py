@@ -194,6 +194,7 @@ async def read_article(
                 "title": document.get("title", "Untitled"),
                 "author": document.get("author"),
                 "source": document.get("source"),
+                "source_url": document.get("source_url"),
                 "content": clean_html,
                 "is_dark": is_dark,
                 "reading_progress": reading_progress,

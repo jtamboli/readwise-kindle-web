@@ -259,6 +259,10 @@
 
     <div class="article-nav article-nav-top">
         <a href="{{ back_url }}">Back to list</a>
+        {% if source_url %}
+        &middot;
+        <a href="{{ source_url }}" target="_blank" rel="noopener">Original</a>
+        {% endif %}
         {% if is_feed %}
             {% if next_url %}
             &middot;
