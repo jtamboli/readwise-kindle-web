@@ -99,9 +99,9 @@ async def list_home(request: Request):
         later_items = sort_items(later_items, sort_order)
 
         return templates.TemplateResponse(
+            request,
             "list.html",
             {
-                "request": request,
                 "shortlist_items": shortlist_items,
                 "later_items": later_items,
                 "is_dark": is_dark,
@@ -187,9 +187,9 @@ async def read_article(
         is_dark = is_dark_mode()
         reading_progress = document.get("reading_progress", 0) or 0
         return templates.TemplateResponse(
+            request,
             "page.html",
             {
-                "request": request,
                 "doc_id": doc_id,
                 "title": document.get("title", "Untitled"),
                 "author": document.get("author"),
@@ -313,9 +313,9 @@ async def list_by_location(request: Request, location: str):
         display_name = location.capitalize()
 
         return templates.TemplateResponse(
+            request,
             "list_single.html",
             {
-                "request": request,
                 "items": items,
                 "list_name": display_name,
                 "is_dark": is_dark,
@@ -350,9 +350,9 @@ async def list_feed(request: Request):
         items = sort_items(items, sort_order)
 
         return templates.TemplateResponse(
+            request,
             "list_single.html",
             {
-                "request": request,
                 "items": items,
                 "list_name": "Feed",
                 "is_dark": is_dark,
@@ -399,9 +399,9 @@ async def list_random(request: Request):
         random_items = unique_items[:10]
 
         return templates.TemplateResponse(
+            request,
             "list_single.html",
             {
-                "request": request,
                 "items": random_items,
                 "list_name": "Random",
                 "is_dark": is_dark,
@@ -439,9 +439,9 @@ async def list_tags(request: Request):
         tags.sort(key=lambda x: x["count"], reverse=True)
 
         return templates.TemplateResponse(
+            request,
             "tags.html",
             {
-                "request": request,
                 "tags": tags,
                 "is_dark": is_dark,
                 "sort_order": sort_order,
@@ -480,9 +480,9 @@ async def list_articles_by_tag(request: Request, tag_name: str):
         filtered_items = sort_items(filtered_items, sort_order)
 
         return templates.TemplateResponse(
+            request,
             "list_single.html",
             {
-                "request": request,
                 "items": filtered_items,
                 "list_name": f"Tag: {tag_name}",
                 "is_dark": is_dark,
