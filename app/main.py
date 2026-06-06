@@ -1,8 +1,13 @@
 """FastAPI application for Readwise Kindle web reader."""
+import base64
 import random
+import secrets
+from pathlib import Path
 from urllib.parse import urlparse
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+
+from kindle_reader.config import Config
 from fastapi.templating import Jinja2Templates
 
 from kindle_reader.api_client import client, VALID_LOCATIONS
@@ -24,7 +29,30 @@ from kindle_reader.utils import deduplicate_by_id, normalize_tags
 TRANSPARENT_GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
 
 app = FastAPI(title="Readwise Kindle Web Reader")
-templates = Jinja2Templates(directory="/app/kindle_reader/templates")
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
+
+
+@app.middleware("http")
+async def basic_auth_middleware(request: Request, call_next):
+    """Gate every request behind HTTP Basic Auth when credentials are configured."""
+    if Config.basic_auth_enabled():
+        header = request.headers.get("Authorization", "")
+        authorized = False
+        if header.startswith("Basic "):
+            try:
+                decoded = base64.b64decode(header[6:]).decode("utf-8")
+                username, _, password = decoded.partition(":")
+                authorized = secrets.compare_digest(
+                    username, Config.BASIC_AUTH_USERNAME or ""
+                ) and secrets.compare_digest(password, Config.BASIC_AUTH_PASSWORD or "")
+            except (ValueError, UnicodeDecodeError):
+                authorized = False
+        if not authorized:
+            return Response(
+                status_code=401,
+                headers={"WWW-Authenticate": 'Basic realm="Kindle Reader"'},
+            )
+    return await call_next(request)
 
 
 def words_to_minutes(word_count: int) -> int:
