@@ -198,30 +198,32 @@ class TestGetDocument:
 class TestUpdateReadingProgress:
     """Tests for update_reading_progress method."""
 
-    @pytest.mark.asyncio
-    async def test_sends_progress_update(self, client, mock_response):
-        """Should send PATCH request with progress."""
+    def test_updates_cached_progress(self, client):
+        """Should update reading_progress on the cached document in place."""
+        document_cache["doc-1"] = {"id": "doc-1", "reading_progress": 0.0}
+
+        client.update_reading_progress("doc-1", 0.5)
+
+        assert document_cache["doc-1"]["reading_progress"] == 0.5
+
+    def test_noop_when_document_not_cached(self, client):
+        """Should silently do nothing (no error) when the doc isn't cached."""
+        assert "missing-doc" not in document_cache
+
+        # Should not raise and should not create a cache entry.
+        client.update_reading_progress("missing-doc", 0.5)
+
+        assert "missing-doc" not in document_cache
+
+    def test_makes_no_network_call(self, client):
+        """Progress is local-only; the read-only public API is never called."""
+        document_cache["doc-1"] = {"id": "doc-1", "reading_progress": 0.0}
+
         with patch("httpx.AsyncClient") as mock_client_class:
-            mock_async_client = AsyncMock()
-            mock_client_class.return_value.__aenter__.return_value = mock_async_client
-            mock_async_client.patch.return_value = mock_response({})
+            client.update_reading_progress("doc-1", 0.9)
 
-            await client.update_reading_progress("doc-1", 0.5)
-
-            mock_async_client.patch.assert_called_once()
-            call_kwargs = mock_async_client.patch.call_args
-            assert "reading_progress" in str(call_kwargs)
-
-    @pytest.mark.asyncio
-    async def test_handles_errors_silently(self, client):
-        """Should not raise errors (fire-and-forget)."""
-        with patch("httpx.AsyncClient") as mock_client_class:
-            mock_async_client = AsyncMock()
-            mock_client_class.return_value.__aenter__.return_value = mock_async_client
-            mock_async_client.patch.side_effect = Exception("Network error")
-
-            # Should not raise
-            await client.update_reading_progress("doc-1", 0.5)
+            mock_client_class.assert_not_called()
+        assert document_cache["doc-1"]["reading_progress"] == 0.9
 
 
 class TestArchiveDocument:
