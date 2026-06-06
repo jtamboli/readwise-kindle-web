@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: readwise-kindle-web
+    runtime: python
+    plan: free
+    buildCommand: pip install uv && uv sync --frozen
+    startCommand: uv run uvicorn kindle_reader.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    envVars:
+      # Set these values in the Render dashboard (sync: false keeps secrets
+      # out of the repo). The app requires both BASIC_AUTH_* vars to enforce
+      # HTTP Basic Auth; if they are unset the site is publicly readable.
+      - key: READWISE_API_TOKEN
+        sync: false
+      - key: BASIC_AUTH_USERNAME
+        sync: false
+      - key: BASIC_AUTH_PASSWORD
+        sync: false
