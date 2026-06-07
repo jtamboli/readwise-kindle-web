@@ -1,7 +1,7 @@
 """Sunrise/sunset calculation for dark mode support."""
 
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 # Hardcoded coordinates (Washington D.C. area)
 LATITUDE = 39.003
@@ -42,20 +42,14 @@ def _calculate_sun_times(date: datetime) -> tuple[datetime, datetime]:
     sunrise_hour = solar_noon_utc - (hour_angle / 15)
     sunset_hour = solar_noon_utc + (hour_angle / 15)
 
-    # Convert to datetime
+    # Convert to datetime. Use timedelta rather than replace(hour=...) so the
+    # times correctly roll into the previous/next day: at this longitude the
+    # UTC sunset can exceed 24h (after midnight UTC) and sunrise can be
+    # negative, neither of which a fixed-day .replace() can represent.
     base_date = date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
 
-    sunrise_minutes = int(sunrise_hour * 60)
-    sunset_minutes = int(sunset_hour * 60)
-
-    sunrise = base_date.replace(
-        hour=sunrise_minutes // 60,
-        minute=sunrise_minutes % 60
-    )
-    sunset = base_date.replace(
-        hour=sunset_minutes // 60,
-        minute=sunset_minutes % 60
-    )
+    sunrise = base_date + timedelta(hours=sunrise_hour)
+    sunset = base_date + timedelta(hours=sunset_hour)
 
     return sunrise, sunset
 
