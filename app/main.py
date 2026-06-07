@@ -4,7 +4,7 @@ import random
 import secrets
 from pathlib import Path
 from urllib.parse import urlparse
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import APIRouter, FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from kindle_reader.config import Config
@@ -29,6 +29,7 @@ from kindle_reader.utils import deduplicate_by_id, normalize_tags
 TRANSPARENT_GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
 
 app = FastAPI(title="Readwise Kindle Web Reader")
+router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
 
@@ -103,7 +104,7 @@ templates.env.filters["words_to_minutes"] = words_to_minutes
 templates.env.filters["extract_domain"] = extract_domain
 
 
-@app.get("/", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse)
 async def list_home(request: Request):
     """
     Display home page with Shortlist and Later sections.
@@ -169,7 +170,7 @@ def get_back_url(from_list: str) -> str:
         return "/kindle/"
 
 
-@app.get("/read/{doc_id}", response_class=HTMLResponse)
+@router.get("/read/{doc_id}", response_class=HTMLResponse)
 async def read_article(
     request: Request,
     doc_id: str,
@@ -238,7 +239,7 @@ async def read_article(
         raise HTTPException(status_code=500, detail=f"Error rendering article: {str(e)}")
 
 
-@app.get("/progress/{doc_id}")
+@router.get("/progress/{doc_id}")
 async def update_progress(doc_id: str, p: float = 0):
     """
     Update reading progress via JS beacon.
@@ -255,7 +256,7 @@ async def update_progress(doc_id: str, p: float = 0):
     return Response(content=TRANSPARENT_GIF, media_type="image/gif")
 
 
-@app.post("/archive/{doc_id}", response_class=RedirectResponse)
+@router.post("/archive/{doc_id}", response_class=RedirectResponse)
 async def archive(doc_id: str):
     """
     Archive a document.
@@ -273,7 +274,7 @@ async def archive(doc_id: str):
         raise HTTPException(status_code=500, detail=f"Error archiving document: {str(e)}")
 
 
-@app.post("/archive-next/{doc_id}", response_class=RedirectResponse)
+@router.post("/archive-next/{doc_id}", response_class=RedirectResponse)
 async def archive_and_next(request: Request, doc_id: str):
     """
     Archive a document and navigate to the next one.
@@ -305,7 +306,7 @@ async def archive_and_next(request: Request, doc_id: str):
         raise HTTPException(status_code=500, detail=f"Error archiving document: {str(e)}")
 
 
-@app.get("/list/{location}", response_class=HTMLResponse)
+@router.get("/list/{location}", response_class=HTMLResponse)
 async def list_by_location(request: Request, location: str):
     """
     Display list of items from a specific location.
@@ -355,7 +356,7 @@ async def list_by_location(request: Request, location: str):
         raise HTTPException(status_code=500, detail=f"Error fetching {location} items: {str(e)}")
 
 
-@app.get("/feed", response_class=HTMLResponse)
+@router.get("/feed", response_class=HTMLResponse)
 async def list_feed(request: Request):
     """
     Display list of feed items.
@@ -392,7 +393,7 @@ async def list_feed(request: Request):
         raise HTTPException(status_code=500, detail=f"Error fetching feed items: {str(e)}")
 
 
-@app.get("/random", response_class=HTMLResponse)
+@router.get("/random", response_class=HTMLResponse)
 async def list_random(request: Request):
     """
     Display 10 random articles from Later and Shortlist locations.
@@ -441,7 +442,7 @@ async def list_random(request: Request):
         raise HTTPException(status_code=500, detail=f"Error fetching random articles: {str(e)}")
 
 
-@app.get("/tags", response_class=HTMLResponse)
+@router.get("/tags", response_class=HTMLResponse)
 async def list_tags(request: Request):
     """
     Display list of all tags sorted by article count.
@@ -480,7 +481,7 @@ async def list_tags(request: Request):
         raise HTTPException(status_code=500, detail=f"Error fetching tags: {str(e)}")
 
 
-@app.get("/tags/{tag_name}", response_class=HTMLResponse)
+@router.get("/tags/{tag_name}", response_class=HTMLResponse)
 async def list_articles_by_tag(request: Request, tag_name: str):
     """
     Display list of articles with a specific tag.
@@ -522,7 +523,7 @@ async def list_articles_by_tag(request: Request, tag_name: str):
         raise HTTPException(status_code=500, detail=f"Error fetching articles for tag '{tag_name}': {str(e)}")
 
 
-@app.get("/hide/{doc_id}", response_class=RedirectResponse)
+@router.get("/hide/{doc_id}", response_class=RedirectResponse)
 async def toggle_hidden(request: Request, doc_id: str):
     """
     Toggle the hidden status of an article by adding/removing the 'kindle-hidden' tag.
@@ -550,7 +551,7 @@ async def toggle_hidden(request: Request, doc_id: str):
         raise HTTPException(status_code=500, detail=f"Error toggling hidden status: {str(e)}")
 
 
-@app.get("/refresh", response_class=RedirectResponse)
+@router.get("/refresh", response_class=RedirectResponse)
 async def refresh_cache():
     """
     Clear all caches and redirect to home page.
@@ -560,6 +561,12 @@ async def refresh_cache():
     """
     client.invalidate_list_cache()
     return RedirectResponse(url="/kindle/", status_code=303)
+
+
+# Mount routes at /kindle/ (Render — no reverse proxy prefix stripping)
+# and at / (container — nginx strips /kindle before proxying).
+app.include_router(router, prefix="/kindle")
+app.include_router(router)
 
 
 @app.get("/health")
