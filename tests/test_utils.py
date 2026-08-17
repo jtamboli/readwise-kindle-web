@@ -1,12 +1,12 @@
 """Tests for utility functions."""
 import pytest
 
-# Mock the config before importing utils to avoid READWISE_API_TOKEN validation
+# Mock the config before importing utils to avoid KINDLE_READWISE_API_TOKEN validation
 import sys
 from unittest.mock import patch
 
 # Patch Config.validate to avoid token validation during import
-with patch.dict('os.environ', {'READWISE_API_TOKEN': 'test-token'}):
+with patch.dict('os.environ', {'KINDLE_READWISE_API_TOKEN': 'test-token'}):
     from kindle_reader.utils import normalize_tags, deduplicate_by_id
 
 

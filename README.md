@@ -54,8 +54,8 @@ cp .env.example .env
 Edit `.env` and set your API token (get it from https://readwise.io/access_token):
 
 ```bash
-READWISE_API_TOKEN=your_actual_token_here
-CACHE_LIST_TTL=300
+KINDLE_READWISE_API_TOKEN=your_actual_token_here
+KINDLE_CACHE_LIST_TTL=300
 ```
 
 ### 4. Run the development server
@@ -78,8 +78,8 @@ The application will be available at `http://localhost:8000`
 
 All configuration is done via environment variables:
 
-- `READWISE_API_TOKEN` (required): Your Readwise API token
-- `CACHE_LIST_TTL` (default: 300): List cache duration in seconds
+- `KINDLE_READWISE_API_TOKEN` (required): Your Readwise API token
+- `KINDLE_CACHE_LIST_TTL` (default: 300): List cache duration in seconds
 
 ## Container Integration
 
@@ -168,7 +168,7 @@ All inline styles, scripts, and other potentially problematic markup is stripped
 
 ## Troubleshooting
 
-### "READWISE_API_TOKEN environment variable is required"
+### "KINDLE_READWISE_API_TOKEN environment variable is required"
 
 Make sure you've created a `.env` file with your API token. The config module validates this on startup.
 

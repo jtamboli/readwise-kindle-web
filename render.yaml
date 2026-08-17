@@ -10,7 +10,7 @@ services:
       # Set these values in the Render dashboard (sync: false keeps secrets
       # out of the repo). The app requires both BASIC_AUTH_* vars to enforce
       # HTTP Basic Auth; if they are unset the site is publicly readable.
-      - key: READWISE_API_TOKEN
+      - key: KINDLE_READWISE_API_TOKEN
         sync: false
       - key: BASIC_AUTH_USERNAME
         sync: false

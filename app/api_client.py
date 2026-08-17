@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Two-tier caching
 # Support multiple location caches (shortlist, later, feed, etc.)
-list_cache = TTLCache(maxsize=10, ttl=Config.CACHE_LIST_TTL)
+list_cache = TTLCache(maxsize=10, ttl=Config.KINDLE_CACHE_LIST_TTL)
 document_cache: Dict[str, Dict] = {}  # No TTL, invalidated manually
 
 # Valid locations for the API
@@ -34,7 +34,7 @@ class ReadwiseClient:
     def __init__(self):
         self.base_url = Config.READWISE_API_BASE
         self.headers = {
-            "Authorization": f"Token {Config.READWISE_API_TOKEN}",
+            "Authorization": f"Token {Config.KINDLE_READWISE_API_TOKEN}",
             "Content-Type": "application/json",
         }
 

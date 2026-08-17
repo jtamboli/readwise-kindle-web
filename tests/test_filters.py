@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch
 
 # Patch Config.validate to avoid token validation during import
-with patch.dict('os.environ', {'READWISE_API_TOKEN': 'test-token'}):
+with patch.dict('os.environ', {'KINDLE_READWISE_API_TOKEN': 'test-token'}):
     from kindle_reader.filters import (
         KINDLE_HIDDEN_TAG,
         is_article_hidden,

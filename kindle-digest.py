@@ -83,7 +83,7 @@ def send_kindle_digest(session):
 def check_auth():
     """Verify query string token authentication for FastCGI endpoint."""
     query_string = os.environ.get('QUERY_STRING', '')
-    expected_token = os.environ.get('READWISE_WEBHOOK_TOKEN', '')
+    expected_token = os.environ.get('KINDLE_DIGEST_AUTH_TOKEN', '')
 
     if not expected_token:
         # No token configured - deny access (secure by default)
@@ -113,15 +113,15 @@ def main():
         sys.exit(0)
 
     # Read credentials from environment
-    email = os.environ.get('READWISE_EMAIL', '').strip()
-    password = os.environ.get('READWISE_PASSWORD', '').strip()
+    email = os.environ.get('KINDLE_DIGEST_READWISE_EMAIL', '').strip()
+    password = os.environ.get('KINDLE_DIGEST_READWISE_PASSWORD', '').strip()
 
     try:
         # Validate credentials
         if not email:
-            raise ValueError("READWISE_EMAIL not configured")
+            raise ValueError("KINDLE_DIGEST_READWISE_EMAIL not configured")
         if not password:
-            raise ValueError("READWISE_PASSWORD not configured")
+            raise ValueError("KINDLE_DIGEST_READWISE_PASSWORD not configured")
 
         # Login
         session = login(email, password)

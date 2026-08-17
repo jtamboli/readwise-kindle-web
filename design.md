@@ -83,10 +83,10 @@ In-memory dict is fine for personal use; you're not dealing with scale concerns.
 ### Configuration
 
 ```
-READWISE_API_TOKEN=xxx
+KINDLE_READWISE_API_TOKEN=xxx
 HOST=0.0.0.0
 PORT=5000
-CACHE_LIST_TTL=300
+KINDLE_CACHE_LIST_TTL=300
 ```
 
 -----

@@ -120,7 +120,7 @@ location /kindle/ {
 Add to your `.env`:
 
 ```
-READWISE_API_TOKEN=xxx
+KINDLE_READWISE_API_TOKEN=xxx
 KINDLE_PAGE_CHAR_BUDGET=1800
 ```
 

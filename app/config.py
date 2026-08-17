@@ -10,10 +10,10 @@ class Config:
     """Application configuration."""
 
     # Readwise API token (required)
-    READWISE_API_TOKEN = os.getenv("READWISE_API_TOKEN")
+    KINDLE_READWISE_API_TOKEN = os.getenv("KINDLE_READWISE_API_TOKEN")
 
     # Cache settings
-    CACHE_LIST_TTL = int(os.getenv("CACHE_LIST_TTL", "300"))  # 5 minutes
+    KINDLE_CACHE_LIST_TTL = int(os.getenv("KINDLE_CACHE_LIST_TTL", "300"))  # 5 minutes
 
     # HTTP Basic Auth (optional). When both are set, every request requires
     # these credentials. Leave unset to disable auth (e.g. local network use).
@@ -34,8 +34,8 @@ class Config:
     @classmethod
     def validate(cls):
         """Validate required configuration."""
-        if not cls.READWISE_API_TOKEN:
-            raise ValueError("READWISE_API_TOKEN environment variable is required")
+        if not cls.KINDLE_READWISE_API_TOKEN:
+            raise ValueError("KINDLE_READWISE_API_TOKEN environment variable is required")
 
 
 # Validate configuration on import

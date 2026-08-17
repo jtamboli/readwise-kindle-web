@@ -4,7 +4,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 import httpx
 
 # Patch Config.validate to avoid token validation during import
-with patch.dict('os.environ', {'READWISE_API_TOKEN': 'test-token'}):
+with patch.dict('os.environ', {'KINDLE_READWISE_API_TOKEN': 'test-token'}):
     from kindle_reader.api_client import (
         ReadwiseClient,
         VALID_LOCATIONS,
