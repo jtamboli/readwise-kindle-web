@@ -3,18 +3,19 @@ Title: Reader API | Readwise
 URL Source: https://readwise.io/reader_api
 
 Markdown Content:
-The Reader API just supports saving new documents to Reader and fetching your documents. We will add more endpoints in the near future. If you have any questions, please reach out :)  
-Looking for the API docs for the original Readwise? [See here.](https://readwise.io/api_deets)
+The Reader API supports saving new documents to Reader and fetching your documents. If you have any questions, please [reach out :)](mailto:api@readwise.io)
 
-Authentication
---------------
+ Looking for the API docs for the original Readwise? [See here.](https://readwise.io/api_deets)
 
-Set a header with key "Authorization" and value: "Token XXX" where XXX is your Readwise access token. You (or your users) can get that from here: [readwise.io/access\_token](https://readwise.io/access_token)
+ Want to give your AI agent direct access to your Reader library? Check out our [MCP](https://readwise.io/mcp) or our [CLI](https://readwise.io/cli)!
+
+## Authentication
+
+Set a header with key "Authorization" and value: "Token XXX" where XXX is your Readwise access token. You (or your users) can get that from here: [readwise.io/access_token](https://readwise.io/access_token)
 
 If you want to check that a token is valid, just make a GET request to `https://readwise.io/api/v2/auth/` with the above header. You should receive a `204` response.
 
-Document CREATE
----------------
+## Document CREATE
 
 **Request**: `POST` to `https://readwise.io/api/v3/save/`
 
@@ -24,17 +25,16 @@ Document CREATE
 | --- | --- | --- | --- |
 | url | string | The document's unique URL. If you don't have one, you can provide a made up value such as `https://yourapp.com#document1` | yes |
 | html | string | The document's content, in valid html (see examples). If you don't provide this, we will try to scrape the URL you provided to fetch html from the open web. | no |
-| should\_clean\_html | boolean | Only valid when `html` is provided. Pass `true` to have us automatically clean the html and parse the metadata (title/author) of the document for you. By default, this option is `false`. | no |
+| should_clean_html | boolean | Only valid when `html` is provided. Pass `true` to have us automatically clean the html and parse the metadata (title/author) of the document for you. By default, this option is `false`. | no |
 | title | string | The document's title, it will overwrite the original title of the document | no |
 | author | string | The document's author, it will overwrite the original author (if found during the parsing step) | no |
 | summary | string | Summary of the document | no |
-| published\_date | date | A datetime representing when the document was published in the ISO 8601 format; default timezone is UTC.  
-Example: `"2020-07-14T20:11:24+00:00"` | no |
-| image\_url | string | An image URL to use as cover image | no |
-| location | string | One of: `new`, `later`, `archive` or `feed`. Default is `new`.  
-Represents the initial location of the document (previously called `triage_status`). Note: if you try to use a location the user doesn't have enabled in their settings, this value will be set to their default location. | no |
+| language | string | The document's language code, such as `en`, `de`, or `en-US`. When omitted, Reader auto-detects the language. Used for features such as text-to-speech. | no |
+| published_date | date | A datetime representing when the document was published in the ISO 8601 format; default timezone is UTC. Example: `"2020-07-14T20:11:24+00:00"` | no |
+| image_url | string | An image URL to use as cover image | no |
+| location | string | One of: `new`, `later`, `archive` or `feed`. Default is `new`. Represents the initial location of the document (previously called `triage_status`). Note: if you try to use a location the user doesn't have enabled in their settings, this value will be set to their default location. | no |
 | category | string | One of: `article`, `email`, `rss`, `highlight`, `note`, `pdf`, `epub`, `tweet` or `video`. Default is guessed based on the URL, usually `article`. | no |
-| saved\_using | string | This value represents the source of the document | no |
+| saved_using | string | This value represents the source of the document | no |
 | tags | list | A list of strings containing tags, example: `["tag1", "tag2"]` | no |
 | notes | string | A top-level note of the document | no |
 
@@ -44,42 +44,39 @@ Represents the initial location of the document (previously called `triage_statu
 *   Created document details:
 
 ```
-
 {
     "id": "0000ffff2222eeee3333dddd4444",
     "url": "https://read.readwise.io/new/read/0000ffff2222eeee3333dddd4444",
 }
-              
 ```
+
+**Rate limit:**`50/minute` per access token.
 
 **Usage/Examples:**
 
 *   JavaScript
 
 ```
-
 $.ajax({
   url: 'https://readwise.io/api/v3/save/',
   type: 'POST',
   contentType: 'application/json',
   beforeSend: function (xhr) {
     xhr.setRequestHeader('Authorization', 'Token XXX');
-    },
+  },
   data: JSON.stringify({
     "url": "https://example.com/article/",
-    "html": "<div><h1>This article is awesome</h1><p>content here!</p></div>"
+    "html": "<div><h1>This article is awesome</h1><p>content here!</p></div>",
+    "language": "de",
     "tags": ["tag1", "tag2"]
   }),
   success: function (result) {console.log(result)},
   error: function (error) {console.log(error)},
 });
-          
 ```
-
 *   Python
 
 ```
-
 import requests
 requests.post(
     url="https://readwise.io/api/v3/save/",
@@ -87,22 +84,18 @@ requests.post(
     json={
         "url": "https://example.com/article/",
         # No html is provided, so the url will be scraped to get the document's content.
+        "language": "de",
         "tags": ["tag3", "tag4"]
     }
 )
-                    
 ```
-
 *   Bash
 
 ```
-
-$ curl -v https://readwise.io/api/v3/save/ -H "Authorization: Token XXX" -X POST -d '{"url": "https://example.com/article/"}' -H "Content-Type: application/json"
-                    
+$ curl -v https://readwise.io/api/v3/save/ -H "Authorization: Token XXX" -X POST -d '{"url": "https://example.com/article/", "language": "de"}' -H "Content-Type: application/json"
 ```
 
-Document LIST
--------------
+## Document LIST
 
 **Request**: `GET` to `https://readwise.io/api/v3/list/`
 
@@ -114,18 +107,20 @@ Document LIST
 | updatedAfter | string (formatted as ISO 8601 date) | Fetch only documents updated after this date | no |
 | location | string | The document's location, could be one of: `new`, `later`, `shortlist`, `archive`, `feed` | no |
 | category | string | The document's category, could be one of: `article`, `email`, `rss`, `highlight`, `note`, `pdf`, `epub`, `tweet`, `video` | no |
+| tag | string | The document's tag key. Pass up to 5 `tag` parameters to find documents having all the tags listed. Pass empty value (`?tag=`) to find untagged documents. Use the [Tag LIST](https://readwise.io/reader_api#tags) endpoint to retrieve all tags available. | no |
+| limit | integer | The maximum number of documents to return, between 1 and 100. Default is 100. | no |
 | pageCursor | string | A string returned by a previous request to this endpoint. Use it to get the next page of documents if there are too many for one request. | no |
 | withHtmlContent | boolean | Include the `html_content` field in each document's data. Please note that enabling this feature may slightly increase request processing time. Could be one of: `true`, `false`. | no |
+| withRawSourceUrl | boolean | Include the `raw_source_url` field in each document's data, containing a direct Amazon S3 link to the raw document source file. The link is empty for non-distributable documents, like Wisereads previews. The link is valid for one hour. Please note that enabling this feature may slightly increase request processing time. Could be one of: `true`, `false`. | no |
 
 **Response:**
 
 *   Status code: `200`
-*   Please keep in mind that both highlights and notes made in Reader are also considered Documents. Highlights and notes will have \`parent\_id\` set, which is the Document id of the article/book/etc and highlight that they belong to, respectively.
+*   Please keep in mind that both highlights and notes made in Reader are also considered Documents. Highlights and notes will have `parent_id` set, which is the Document id of the article/book/etc and highlight that they belong to, respectively.
 *   All dates are UTC unless otherwise stated.
 *   List of documents:
 
 ```
-
 {
     "count": 2304,
     "nextPageCursor": "01gm6kjzabcd609yepjrmcgz8a",
@@ -142,6 +137,8 @@ Document LIST
             "tags": {},
             "site_name": "Driverless Crocodile",
             "word_count": 819,
+            "reading_time": "4 mins",
+            "listening_time": null,
             "created_at": "2023-03-26T21:02:51.618751+00:00",
             "updated_at": "2023-03-26T21:02:55.453827+00:00",
             "notes": "",
@@ -167,6 +164,8 @@ Document LIST
             "tags": {},
             "site_name": "Vanity Fair",
             "word_count": 2678,
+            "reading_time": "11 mins",
+            "listening_time": null,
             "created_at": "2022-12-08T02:53:29.639650+00:00",
             "updated_at": "2022-12-13T20:37:42.544298+00:00",
             "published_date": "2017-08-09",
@@ -192,6 +191,8 @@ Document LIST
             "tags": {},
             "site_name": "Vanity Fair",
             "word_count": 9601,
+            "reading_time": "37 mins",
+            "listening_time": null,
             "created_at": "2022-12-08T02:50:35.662027+00:00",
             "updated_at": "2023-03-22T13:29:41.827456+00:00",
             "published_date": "2022-10-28",
@@ -207,15 +208,15 @@ Document LIST
         }
     ]
 }
-              
 ```
+
+**Rate limit:**`20/minute` per access token.
 
 **Usage/Examples:**
 
 *   JavaScript
 
 ```
-
 const token = "XXX"; // use your access token here
 
 const fetchDocumentListApi = async (updatedAfter=null, location=null) => {
@@ -259,13 +260,10 @@ const archivedData = await fetchDocumentListApi(null, 'archive');
 // Later, if you want to get new documents updated after some date, do this:
 const docsAfterDate = new Date(Date.now() - 24 * 60 * 60 * 1000);  // use your own stored date
 const newData = await fetchDocumentListApi(docsAfterDate.toISOString());
-          
 ```
-
 *   Python
 
 ```
-
 import datetime
 import requests  # This may need to be installed from pip
 
@@ -303,21 +301,17 @@ archived_data = fetch_reader_document_list_api(location='archive')
 # Later, if you want to get new documents updated after some date, do this:
 docs_after_date = datetime.datetime.now() - datetime.timedelta(days=1)  # use your own stored date
 new_data = fetch_reader_document_list_api(docs_after_date.isoformat())
-                    
 ```
-
 *   Bash
 
 ```
-
 $ curl -v https://readwise.io/api/v3/list/?location=later -H "Authorization: Token XXX" -H "Content-Type: application/json"
-                    
 ```
 
-Document UPDATE
----------------
+## Document UPDATE
 
-Use this API to update specific fields from the list below.  
+Use this API to update specific fields from the list below.
+
 Fields omitted from the request will remain unchanged.
 
 **Request**: `PATCH` to `https://readwise.io/api/v3/update/<document_id>/`
@@ -329,12 +323,14 @@ Fields omitted from the request will remain unchanged.
 | title | string | The document's title, it will overwrite the original title of the document | no |
 | author | string | The document's author, it will overwrite the original author (if found during the parsing step) | no |
 | summary | string | Summary of the document | no |
-| published\_date | date | A datetime representing when the document was published in the ISO 8601 format; default timezone is UTC.
-Example: `"2020-07-14T20:11:24+00:00"` | no |
-| image\_url | string | An image URL to use as cover image | no |
+| language | string | The document's language code, such as `en`, `de`, or `en-US`. | no |
+| published_date | date | A datetime representing when the document was published in the ISO 8601 format; default timezone is UTC. Example: `"2020-07-14T20:11:24+00:00"` | no |
+| image_url | string | An image URL to use as cover image | no |
+| seen | boolean | Mark the document as seen/unseen (without deleting it). Setting `true` will populate `first_opened_at` / `last_opened_at`; setting `false` will clear them. | no |
 | location | string | One of: `new`, `later`, `archive` or `feed`. Represents the current location of the document (previously called `triage_status`). Note: if you try to use a location the user doesn't have enabled in their settings, this value will be set to their default location. | no |
 | category | string | One of: `article`, `email`, `rss`, `highlight`, `note`, `pdf`, `epub`, `tweet` or `video`. | no |
 | tags | list | A list of strings containing tags, example: `["tag1", "tag2"]` | no |
+| notes | string | A string to replace the current _Document note_ for this document. Pass an empty string to clear the existing note. Note: this field does not work to add notes for highlights. | no |
 
 **Response:**
 
@@ -342,20 +338,19 @@ Example: `"2020-07-14T20:11:24+00:00"` | no |
 *   Updated document details:
 
 ```
-
 {
     "id": "0000ffff2222eeee3333dddd4444",
     "url": "https://read.readwise.io/new/read/0000ffff2222eeee3333dddd4444",
 }
-              
 ```
+
+**Rate limit:**`50/minute` per access token.
 
 **Usage/Examples:**
 
 *   JavaScript
 
 ```
-
 $.ajax({
   url: 'https://readwise.io/api/v3/update/0000ffff2222eeee3333dddd4444',
   type: 'PATCH',
@@ -370,13 +365,10 @@ $.ajax({
   success: function (result) {console.log(result)},
   error: function (error) {console.log(error)},
 });
-          
 ```
-
 *   Python
 
 ```
-
 import requests
 requests.patch(
     url="https://readwise.io/api/v3/update/0000ffff2222eeee3333dddd4444",
@@ -386,19 +378,114 @@ requests.patch(
         "location": "new",
     }
 )
-                    
 ```
-
 *   Bash
 
 ```
-
 $ curl -v https://readwise.io/api/v3/update/0000ffff2222eeee3333dddd4444 -H "Authorization: Token XXX" -X PATCH -d '{"title": "Updated title"}' -H "Content-Type: application/json"
-                    
 ```
 
-Document DELETE
----------------
+## Document BULK UPDATE
+
+Use this API to update multiple documents in a single request. Each item in the `updates` array can specify different fields to update. Fields omitted from an item will remain unchanged for that document.
+
+**Request**: `PATCH` to `https://readwise.io/api/v3/bulk_update/`
+
+**Request body:** A JSON object with the following structure:
+
+```
+{
+    "updates": [
+        {"id": "<document_id>", "location": "archive", "seen": true},
+        {"id": "<document_id>", "category": "pdf"},
+        {"id": "<document_id>", "tags": ["reading-list"]}
+    ]
+}
+```
+
+**Parameters (per item):**
+
+| Key | Type | Description | Required |
+| --- | --- | --- | --- |
+| id | string | The document ID to update | **yes** |
+| title | string | The document's title | no |
+| author | string | The document's author | no |
+| summary | string | Summary of the document | no |
+| language | string | The document's language code, such as `en`, `de`, or `en-US`. | no |
+| published_date | date | A datetime in ISO 8601 format | no |
+| image_url | string | An image URL to use as cover image | no |
+| seen | boolean | Mark the document as seen/unseen | no |
+| location | string | One of: `new`, `later`, `archive` or `feed` | no |
+| category | string | One of: `article`, `email`, `rss`, `pdf`, `epub`, `tweet` or `video` | no |
+| tags | list | A list of tag strings (replaces all existing tags) | no |
+| notes | string | A string to replace the current document note | no |
+
+**Limits:** Maximum 50 items per request.
+
+**Response:**
+
+*   Status code `200`: all updates succeeded
+*   Status code `207`: some or all items failed despite having a valid payload — check per-item error messages
+*   Status code `400`: request payload is incorrect
+
+```
+{
+    "results": [
+        {"id": "abc123", "success": true},
+        {"id": "def456", "success": true},
+        {"id": "ghi789", "success": false, "error": "Document not found"}
+    ]
+}
+```
+
+**Rate limit:**`20/minute` per access token.
+
+**Usage/Examples:**
+
+*   JavaScript
+
+```
+$.ajax({
+  url: 'https://readwise.io/api/v3/bulk_update/',
+  type: 'PATCH',
+  contentType: 'application/json',
+  beforeSend: function (xhr) {
+    xhr.setRequestHeader('Authorization', 'Token XXX');
+    },
+  data: JSON.stringify({
+    "updates": [
+      {"id": "abc123", "location": "archive", "seen": true},
+      {"id": "def456", "category": "pdf"},
+      {"id": "ghi789", "tags": ["reading-list"]}
+    ]
+  }),
+  success: function (result) {console.log(result)},
+  error: function (error) {console.log(error)},
+});
+```
+*   Python
+
+```
+import requests
+requests.patch(
+    url="https://readwise.io/api/v3/bulk_update/",
+    headers={"Authorization": "Token XXX"},
+    json={
+        "updates": [
+            {"id": "abc123", "location": "archive", "seen": True},
+            {"id": "def456", "category": "pdf"},
+            {"id": "ghi789", "tags": ["reading-list"]},
+        ]
+    }
+)
+```
+*   Bash
+
+```
+$ curl -v https://readwise.io/api/v3/bulk_update/ -H "Authorization: Token XXX" -X PATCH -d '{"updates": [{"id": "abc123", "location": "archive"}, {"id": "def456", "seen": true}]}' -H "Content-Type: application/json"
+```
+
+## Document DELETE
 
 **Request**: `DELETE` to `https://readwise.io/api/v3/delete/<document_id>/`
 
@@ -406,12 +493,13 @@ Document DELETE
 
 *   Status code: `204`
 
+**Rate limit:**`20/minute` per access token.
+
 **Usage/Examples:**
 
 *   JavaScript
 
 ```
-
 $.ajax({
   url: 'https://readwise.io/api/v3/delete/0000ffff2222eeee3333dddd4444',
   type: 'DELETE',
@@ -421,30 +509,96 @@ $.ajax({
   success: function (result) {console.log(result)},
   error: function (error) {console.log(error)},
 });
-          
 ```
-
 *   Python
 
 ```
-
 import requests
 requests.delete(
     url="https://readwise.io/api/v3/delete/0000ffff2222eeee3333dddd4444",
     headers={"Authorization": "Token XXX"},
 )
-                    
 ```
-
 *   Bash
 
 ```
-
 $ curl -v https://readwise.io/api/v3/delete/0000ffff2222eeee3333dddd4444 -H "Authorization: Token XXX" -X DELETE
-                    
 ```
 
-Rate Limiting
--------------
+## Tag LIST
 
-The default base rate is 20 requests per minute (per access token) but the `Document CREATE` and `Document UPDATE` endpoints have higher limits of 50 requests per minute (per access token). You can check `Retry-After` header in the 429 response to get the number of seconds to wait for.
+**Request**: `GET` to `https://readwise.io/api/v3/tags/`
+
+**Parameters:** Usual query params:
+
+| Key | Type | Description | Required |
+| --- | --- | --- | --- |
+| pageCursor | string | A string returned by a previous request to this endpoint. Use it to get the next page of tags if there are too many for one request. | no |
+
+**Response:**
+
+*   Status code: `200`
+*   List of document tags:
+
+```
+{
+    "count": 2,
+    "nextPageCursor": null,
+    "results": [
+        {
+            "key": "first-tag",
+            "name": "First tag"
+        },
+        {
+            "key": "second-tag",
+            "name": "Second tag"
+        }
+    ]
+}
+```
+
+**Rate limit:**`20/minute` per access token.
+
+**Usage/Examples:**
+
+*   JavaScript
+
+```
+$.ajax({
+  url: 'https://readwise.io/api/v3/tags/',
+  type: 'GET',
+  beforeSend: function (xhr) {
+    xhr.setRequestHeader('Authorization', 'Token XXX');
+    },
+  success: function (result) {console.log(result)},
+  error: function (error) {console.log(error)},
+});
+```
+*   Python
+
+```
+import requests
+requests.get(
+    url="https://readwise.io/api/v3/tags/",
+    headers={"Authorization": "Token XXX"},
+)
+```
+*   Bash
+
+```
+$ curl -v https://readwise.io/api/v3/tags/ -H "Authorization: Token XXX"
+```
+
+## Rate Limiting
+
+Requests are rate-limited per access token. Each endpoint's specific rate limit is documented in its section above. When you exceed the limit, a `429 Too Many Requests` response is returned — check the `Retry-After` header for the number of seconds to wait.
+
+## Webhooks
+
+Receive real-time notifications about your highlights and documents via webhooks. Configure webhooks to automatically receive updates when highlights are created, updated, or deleted.
+
+For detailed documentation on setting up and using webhooks, including available event types, payload formats, and best practices, please visit:
+
+[Webhooks Documentation →](https://docs.readwise.io/readwise/docs/webhooks)
+
+You can also configure your webhooks directly in your account settings: [Configure Webhooks](https://readwise.io/webhook)
