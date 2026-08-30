@@ -8,6 +8,13 @@ The public Readwise API (`/api/v3/update/{id}/`) does **not** support
 writing `reading_progress` or `lastOpenedAt` — it silently ignores these
 fields. The official apps use this private state sync API instead.
 
+> **Update (2026-08-30):** the public API now accepts a `seen` boolean on
+> `PATCH /api/v3/update/{id}/`. Setting `true` populates `first_opened_at` /
+> `last_opened_at`; setting `false` clears them, leaving `reading_progress`
+> untouched. This reader uses that endpoint, so it no longer needs the
+> private API for seen state. `reading_progress` is still write-only via the
+> private API.
+
 ## Endpoints
 
 ### `GET /reader/api/state`

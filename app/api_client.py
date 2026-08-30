@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import sys
+from datetime import datetime, timezone
 from typing import List, Dict, Optional
 import httpx
 from cachetools import TTLCache
@@ -149,6 +150,57 @@ class ReadwiseClient:
             document_cache[doc_id] = document
             logger.info(f"Cached document {doc_id}")
             return document
+
+    async def mark_document_seen(self, doc_id: str):
+        """
+        Mark a document as seen, the same state the official Reader apps set.
+
+        The API populates first_opened_at / last_opened_at in response; those
+        timestamps are what the Feed list reads back to decide seen state.
+        Cached copies are stamped locally so the item drops out of the Feed
+        without waiting for the list cache to expire.
+
+        Args:
+            doc_id: Document ID
+        """
+        logger.info(f"Marking document {doc_id} as seen")
+
+        async with httpx.AsyncClient() as client:
+            logger.info(f"  → API request: PATCH /update/{doc_id}/ (seen=true)")
+
+            response = await client.patch(
+                f"{self.base_url}/update/{doc_id}/",
+                headers=self.headers,
+                json={"seen": True},
+                timeout=10.0,
+            )
+            response.raise_for_status()
+
+            logger.info(f"  ← Document marked as seen")
+
+        self._stamp_seen_in_caches(doc_id)
+
+    def _stamp_seen_in_caches(self, doc_id: str):
+        """
+        Mirror a seen marking onto cached copies of a document.
+
+        Args:
+            doc_id: Document ID
+        """
+        now = datetime.now(timezone.utc).isoformat()
+
+        def stamp(document: Dict):
+            document["last_opened_at"] = now
+            if not document.get("first_opened_at"):
+                document["first_opened_at"] = now
+
+        if doc_id in document_cache:
+            stamp(document_cache[doc_id])
+
+        for items in list_cache.values():
+            for item in items:
+                if item.get("id") == doc_id:
+                    stamp(item)
 
     def update_reading_progress(self, doc_id: str, progress: float):
         """

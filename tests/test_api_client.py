@@ -195,6 +195,74 @@ class TestGetDocument:
             assert result is None
 
 
+class TestMarkDocumentSeen:
+    """Tests for mark_document_seen method."""
+
+    @pytest.mark.asyncio
+    async def test_patches_seen_true(self, client, mock_response):
+        """Should PATCH the update endpoint with seen=true."""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+            mock_async_client.patch.return_value = mock_response({})
+
+            await client.mark_document_seen("doc-1")
+
+            call_args = mock_async_client.patch.call_args
+            assert "update/doc-1/" in call_args[0][0]
+            assert call_args[1]["json"] == {"seen": True}
+
+    @pytest.mark.asyncio
+    async def test_stamps_open_timestamps_in_list_cache(self, client, mock_response):
+        """Should stamp cached list entries so the item leaves the Feed."""
+        list_cache["list_feed_100"] = [
+            {"id": "doc-1", "first_opened_at": None, "last_opened_at": None},
+            {"id": "doc-2", "first_opened_at": None, "last_opened_at": None},
+        ]
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+            mock_async_client.patch.return_value = mock_response({})
+
+            await client.mark_document_seen("doc-1")
+
+        cached = {item["id"]: item for item in list_cache["list_feed_100"]}
+        assert cached["doc-1"]["first_opened_at"] is not None
+        assert cached["doc-1"]["last_opened_at"] is not None
+        assert cached["doc-2"]["last_opened_at"] is None
+
+    @pytest.mark.asyncio
+    async def test_preserves_existing_first_opened_at(self, client, mock_response):
+        """Should refresh last_opened_at but keep the original first open."""
+        document_cache["doc-1"] = {
+            "id": "doc-1",
+            "first_opened_at": "2024-01-01T00:00:00+00:00",
+            "last_opened_at": "2024-01-01T00:00:00+00:00",
+        }
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+            mock_async_client.patch.return_value = mock_response({})
+
+            await client.mark_document_seen("doc-1")
+
+        assert document_cache["doc-1"]["first_opened_at"] == "2024-01-01T00:00:00+00:00"
+        assert document_cache["doc-1"]["last_opened_at"] != "2024-01-01T00:00:00+00:00"
+
+    @pytest.mark.asyncio
+    async def test_raises_on_api_error(self, client, mock_response):
+        """Should propagate API errors to the caller."""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+            mock_async_client.patch.return_value = mock_response({}, status_code=500)
+
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.mark_document_seen("doc-1")
+
+
 class TestUpdateReadingProgress:
     """Tests for update_reading_progress method."""
 

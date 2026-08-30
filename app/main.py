@@ -1,5 +1,6 @@
 """FastAPI application for Readwise Kindle web reader."""
 import base64
+import logging
 import random
 import secrets
 from pathlib import Path
@@ -24,6 +25,8 @@ from kindle_reader.filters import (
 from kindle_reader.sanitizer import sanitize_html
 from kindle_reader.sun_times import is_dark_mode
 from kindle_reader.utils import deduplicate_by_id, normalize_tags
+
+logger = logging.getLogger(__name__)
 
 # 1x1 transparent GIF for progress tracking beacon
 TRANSPARENT_GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
@@ -199,6 +202,13 @@ async def read_article(
         html_content = document.get("html_content")
         if not html_content:
             raise HTTPException(status_code=404, detail="Document has no content")
+
+        # Mark seen, matching the official apps, so it leaves the Feed list.
+        # A failure here must not block reading the article.
+        try:
+            await client.mark_document_seen(doc_id)
+        except Exception as e:
+            logger.warning(f"Could not mark document {doc_id} as seen: {e}")
 
         # Sanitize HTML
         clean_html = sanitize_html(html_content)
