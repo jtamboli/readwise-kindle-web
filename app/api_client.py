@@ -27,6 +27,11 @@ document_cache: Dict[str, Dict] = {}  # No TTL, invalidated manually
 # Valid locations for the API
 VALID_LOCATIONS = {"new", "later", "shortlist", "archive", "feed"}
 
+# Documents opened in this reader. The public API is read-only for open state
+# (it never reflects opens made here), so it is tracked locally for the
+# lifetime of the process.
+seen_document_ids: set = set()
+
 
 class ReadwiseClient:
     """Async client for Readwise Reader API."""
@@ -149,6 +154,25 @@ class ReadwiseClient:
             document_cache[doc_id] = document
             logger.info(f"Cached document {doc_id}")
             return document
+
+    @property
+    def seen_document_ids(self) -> set:
+        """Document IDs opened in this reader during this process."""
+        return seen_document_ids
+
+    def mark_document_seen(self, doc_id: str):
+        """
+        Record that a document was opened in this reader.
+
+        The Readwise public API doesn't accept writes to the open timestamps,
+        so this is tracked locally only.
+
+        Args:
+            doc_id: Document ID
+        """
+        if doc_id not in seen_document_ids:
+            seen_document_ids.add(doc_id)
+            logger.info(f"Marked document {doc_id} as seen")
 
     def update_reading_progress(self, doc_id: str, progress: float):
         """

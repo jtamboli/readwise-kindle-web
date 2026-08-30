@@ -1,5 +1,5 @@
 """Article filtering and sorting functions for Readwise Kindle Web Reader."""
-from typing import List, Dict
+from typing import List, Dict, Optional, Set
 
 from kindle_reader.utils import normalize_tags
 
@@ -36,19 +36,43 @@ def filter_hidden_articles(items: List[Dict]) -> List[Dict]:
     return [item for item in items if not is_article_hidden(item)]
 
 
-def filter_seen_articles(items: List[Dict]) -> List[Dict]:
+def is_article_seen(article: Dict, seen_ids: Optional[Set[str]] = None) -> bool:
+    """
+    Check whether an article has been opened at least once.
+
+    The Readwise list API has no 'seen' field, so an article counts as seen
+    when it carries an open timestamp or non-zero reading progress. Articles
+    opened in this reader are tracked locally and passed in via seen_ids,
+    because the public API is read-only for open state.
+
+    Args:
+        article: Article dictionary
+        seen_ids: Optional set of document IDs opened in this reader
+
+    Returns:
+        True if the article has been seen, False otherwise
+    """
+    if seen_ids and article.get("id") in seen_ids:
+        return True
+    if article.get("seen"):
+        return True
+    if article.get("first_opened_at") or article.get("last_opened_at"):
+        return True
+    return bool(article.get("reading_progress"))
+
+
+def filter_seen_articles(items: List[Dict], seen_ids: Optional[Set[str]] = None) -> List[Dict]:
     """
     Filter out articles that have been seen (opened at least once).
 
-    Articles with the 'seen' boolean flag set to True are excluded.
-
     Args:
         items: List of document dictionaries
+        seen_ids: Optional set of document IDs opened in this reader
 
     Returns:
         List of documents with seen articles removed
     """
-    return [item for item in items if not item.get("seen")]
+    return [item for item in items if not is_article_seen(item, seen_ids)]
 
 
 # Available sort options with their display names
