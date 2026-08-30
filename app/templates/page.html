@@ -408,13 +408,24 @@
         flashScreen();
     }
 
-    // Scroll to saved reading progress position
+    // Scroll to saved reading progress position.
+    // Wait for the load event: before web fonts and images have arrived the
+    // document is shorter than its final height, so a percentage computed
+    // against it lands short of where the reader actually stopped.
     var savedProgress = {{ reading_progress }};
-    if (savedProgress > 0) {
+
+    function restoreProgress() {
+        if (savedProgress <= 0) return;
         var scrollableHeight = document.body.scrollHeight - window.innerHeight;
         if (scrollableHeight > 0) {
             window.scrollTo(0, scrollableHeight * savedProgress);
         }
+    }
+
+    if (document.readyState === 'complete') {
+        restoreProgress();
+    } else {
+        window.addEventListener('load', restoreProgress);
     }
 
     // Progress tracking
