@@ -195,9 +195,6 @@ async def read_article(
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        # Opening an article marks it seen so it drops out of the Feed list
-        client.mark_document_seen(doc_id)
-
         # Get HTML content
         html_content = document.get("html_content")
         if not html_content:
@@ -336,7 +333,7 @@ async def list_by_location(request: Request, location: str):
 
         # Filter out seen articles in Feed view
         if location == "feed":
-            items = filter_seen_articles(items, client.seen_document_ids)
+            items = filter_seen_articles(items)
 
         # Sort by user preference
         items = sort_items(items, sort_order)
@@ -376,7 +373,7 @@ async def list_feed(request: Request):
         items = filter_hidden_articles(items)
 
         # Filter out seen articles
-        items = filter_seen_articles(items, client.seen_document_ids)
+        items = filter_seen_articles(items)
 
         # Sort by user preference
         items = sort_items(items, sort_order)

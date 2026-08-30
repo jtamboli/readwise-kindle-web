@@ -15,7 +15,6 @@ def sample_article_with_dict_tags():
         "reading_progress": 0.5,
         "last_opened_at": "2024-01-15T10:00:00Z",
         "last_moved_at": "2024-01-10T08:00:00Z",
-        "seen": True,
     }
 
 
@@ -32,7 +31,6 @@ def sample_article_with_list_tags():
         "reading_progress": 0,
         "last_opened_at": None,
         "last_moved_at": "2024-01-12T14:00:00Z",
-        "seen": False,
     }
 
 
@@ -49,7 +47,6 @@ def sample_article_no_tags():
         "reading_progress": 0,
         "last_opened_at": None,
         "last_moved_at": "2024-01-05T12:00:00Z",
-        "seen": False,
     }
 
 
@@ -66,7 +63,6 @@ def sample_hidden_article():
         "reading_progress": 0,
         "last_opened_at": None,
         "last_moved_at": "2024-01-08T09:00:00Z",
-        "seen": False,
     }
 
 
@@ -83,7 +79,6 @@ def sample_visible_article():
         "reading_progress": 0.25,
         "last_opened_at": "2024-01-14T16:00:00Z",
         "last_moved_at": "2024-01-07T11:00:00Z",
-        "seen": False,
     }
 
 
@@ -97,7 +92,6 @@ def article_list():
             "tags": {"python": {}},
             "last_opened_at": "2024-01-10T10:00:00Z",
             "last_moved_at": "2024-01-05T08:00:00Z",
-            "seen": False,
         },
         {
             "id": "2",
@@ -105,7 +99,6 @@ def article_list():
             "tags": {"kindle-hidden": {}},
             "last_opened_at": None,
             "last_moved_at": "2024-01-15T12:00:00Z",
-            "seen": False,
         },
         {
             "id": "3",
@@ -113,7 +106,6 @@ def article_list():
             "tags": ["python", "web"],
             "last_opened_at": "2024-01-12T14:00:00Z",
             "last_moved_at": "2024-01-01T10:00:00Z",
-            "seen": True,
         },
         {
             "id": "4",
@@ -121,6 +113,5 @@ def article_list():
             "tags": {},
             "last_opened_at": None,
             "last_moved_at": "2024-01-08T09:00:00Z",
-            "seen": False,
         },
     ]

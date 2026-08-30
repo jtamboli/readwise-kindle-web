@@ -91,10 +91,9 @@ class TestFilterSeenArticles:
     """Tests for filter_seen_articles function."""
 
     def test_filters_seen_articles(self, article_list):
-        """Should remove articles flagged seen or carrying an open timestamp."""
+        """Should remove articles carrying an open timestamp."""
         result = filter_seen_articles(article_list)
-        ids = [item["id"] for item in result]
-        assert ids == ["2", "4"]
+        assert [item["id"] for item in result] == ["2", "4"]
 
     def test_empty_list(self):
         """Should return empty list for empty input."""
@@ -104,8 +103,8 @@ class TestFilterSeenArticles:
     def test_all_seen(self):
         """Should return empty list when all articles are seen."""
         articles = [
-            {"id": "1", "seen": True},
-            {"id": "2", "seen": True},
+            {"id": "1", "last_opened_at": "2024-01-10T10:00:00Z"},
+            {"id": "2", "last_opened_at": "2024-01-11T10:00:00Z"},
         ]
         result = filter_seen_articles(articles)
         assert result == []
@@ -113,90 +112,71 @@ class TestFilterSeenArticles:
     def test_none_seen(self):
         """Should return all articles when none are seen."""
         articles = [
-            {"id": "1", "seen": False},
-            {"id": "2", "seen": False},
+            {"id": "1", "first_opened_at": None, "last_opened_at": None},
+            {"id": "2", "first_opened_at": None, "last_opened_at": None},
         ]
         result = filter_seen_articles(articles)
         assert len(result) == 2
 
-    def test_missing_seen_field(self):
-        """Should keep articles with no seen signal at all."""
+    def test_missing_timestamp_fields(self):
+        """Should keep articles with no open timestamp fields at all."""
         articles = [
             {"id": "1"},
-            {"id": "2", "seen": True},
+            {"id": "2", "last_opened_at": "2024-01-10T10:00:00Z"},
         ]
         result = filter_seen_articles(articles)
-        assert len(result) == 1
-        assert result[0]["id"] == "1"
-
-    def test_filters_by_first_opened_at(self):
-        """Should treat a first_opened_at timestamp as seen."""
-        articles = [
-            {"id": "1", "first_opened_at": "2024-01-10T10:00:00Z"},
-            {"id": "2", "first_opened_at": None},
-        ]
-        result = filter_seen_articles(articles)
-        assert [item["id"] for item in result] == ["2"]
-
-    def test_filters_by_last_opened_at(self):
-        """Should treat a last_opened_at timestamp as seen."""
-        articles = [
-            {"id": "1", "last_opened_at": "2024-01-10T10:00:00Z"},
-            {"id": "2", "last_opened_at": None},
-        ]
-        result = filter_seen_articles(articles)
-        assert [item["id"] for item in result] == ["2"]
-
-    def test_filters_by_reading_progress(self):
-        """Should treat non-zero reading progress as seen."""
-        articles = [
-            {"id": "1", "reading_progress": 0.3},
-            {"id": "2", "reading_progress": 0},
-            {"id": "3", "reading_progress": None},
-        ]
-        result = filter_seen_articles(articles)
-        assert [item["id"] for item in result] == ["2", "3"]
-
-    def test_filters_by_locally_seen_ids(self):
-        """Should exclude articles opened in this reader."""
-        articles = [
-            {"id": "1"},
-            {"id": "2"},
-        ]
-        result = filter_seen_articles(articles, {"1"})
-        assert [item["id"] for item in result] == ["2"]
-
-    def test_empty_seen_ids_keeps_unopened(self):
-        """Should keep everything when no article has been opened."""
-        articles = [
-            {"id": "1"},
-            {"id": "2"},
-        ]
-        result = filter_seen_articles(articles, set())
-        assert len(result) == 2
+        assert [item["id"] for item in result] == ["1"]
 
 
 class TestIsArticleSeen:
-    """Tests for is_article_seen function."""
+    """Tests for is_article_seen function.
 
-    def test_unopened_article_is_unseen(self):
-        """Should return False for an article with no open signal."""
+    Cases mirror live Readwise feed data: 'Finalist 4' (seen), 'Daily Brew
+    #1855' (never opened) and 'My E-ink Summer Report' (read, then toggled
+    back to unseen in the official app, which clears the open timestamps but
+    leaves reading_progress in place).
+    """
+
+    def test_opened_article_is_seen(self):
+        """Should report seen when open timestamps are set."""
         article = {
-            "id": "1",
+            "id": "01m0v5qpgxqgyk69j3m81wmtxa",
+            "title": "[Sponsor] Finalist 4: Inspired by Paper Day Planners",
+            "first_opened_at": "2026-08-25T01:46:08.084000+00:00",
+            "last_opened_at": "2026-08-25T01:46:08.084000+00:00",
+            "reading_progress": 0,
+        }
+        assert is_article_seen(article) is True
+
+    def test_never_opened_article_is_unseen(self):
+        """Should report unseen when the article was never opened."""
+        article = {
+            "id": "01m1954e25bawxcqyhg8wk99ek",
+            "title": "Daily Brew #1855",
             "first_opened_at": None,
             "last_opened_at": None,
             "reading_progress": 0,
         }
         assert is_article_seen(article) is False
 
-    def test_opened_article_is_seen(self):
-        """Should return True once an open timestamp exists."""
-        article = {"id": "1", "last_opened_at": "2024-01-10T10:00:00Z"}
-        assert is_article_seen(article) is True
+    def test_marked_unseen_article_is_unseen(self):
+        """Should report unseen after a toggle back, despite reading progress."""
+        article = {
+            "id": "01m19wrpkvscx9dj1vjm6y9vv5",
+            "title": "My E-ink Summer Report",
+            "first_opened_at": None,
+            "last_opened_at": None,
+            "reading_progress": 0.9144277780016387,
+        }
+        assert is_article_seen(article) is False
 
-    def test_locally_opened_article_is_seen(self):
-        """Should return True for an ID in the local seen set."""
-        assert is_article_seen({"id": "1"}, {"1"}) is True
+    def test_reading_progress_alone_is_not_seen(self):
+        """Should not treat reading progress as a seen signal."""
+        assert is_article_seen({"id": "1", "reading_progress": 0.5}) is False
+
+    def test_first_opened_at_alone_is_seen(self):
+        """Should report seen when only first_opened_at is set."""
+        assert is_article_seen({"id": "1", "first_opened_at": "2024-01-10T10:00:00Z"}) is True
 
 
 class TestSortByRecentActivity:
