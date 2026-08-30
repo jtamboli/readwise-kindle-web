@@ -252,18 +252,32 @@
         .archive-button:hover {
             color: var(--link-hover);
         }
+        /* Also acts as a mask: page turns grow it upward so that a line of
+           text cut by the bottom edge is hidden rather than sliced. */
         .page-footer {
             position: fixed;
             left: 0;
             right: 0;
             bottom: 0;
             z-index: 5;
-            padding: 0.3em 1em;
+            height: 2em;
             font-size: 0.75em;
             text-align: center;
             color: var(--meta-color);
             background-color: var(--bg-color);
             pointer-events: none;
+        }
+        .page-footer span {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0.4em;
+        }
+        /* Hit-testing for line boundaries must see the article, not the overlays */
+        .probing .zone-left,
+        .probing .zone-right,
+        .probing .page-footer {
+            display: none;
         }
     </style>
 </head>
@@ -399,9 +413,157 @@
         }, 100);
     }
 
+    // ---- Line-snapped paging ----
+    // Scrolling by a fixed fraction of the viewport slices a line of text at
+    // both edges of every page. Instead the viewport is treated as a page: the
+    // footer grows upward to cover whichever line the bottom edge would cut,
+    // and a forward turn scrolls exactly far enough for that covered line to
+    // become the first line of the next page.
+    var PAGE_TOP = 6;  // px of breathing room above a page's first line
+    var pageFooter = document.getElementById('pageFooter');
+    var footerMinHeight = pageFooter.offsetHeight;
+    var pagedScrollUntil = 0;  // scroll events before this time are ours, not the reader's
+
+    // Rect (viewport coords) of the line box under a point, or null.
+    function lineRectAt(x, y) {
+        var el = document.elementFromPoint(x, y);
+        if (!el || el === document.documentElement || el === document.body) return null;
+
+        var tag = el.tagName;
+        if (tag === 'IMG' || tag === 'VIDEO' || tag === 'CANVAS' || tag === 'HR' || tag === 'svg') {
+            return el.getBoundingClientRect();
+        }
+
+        var range = null;
+        if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(x, y);
+        } else if (document.caretPositionFromPoint) {
+            var pos = document.caretPositionFromPoint(x, y);
+            if (pos) {
+                range = document.createRange();
+                range.setStart(pos.offsetNode, pos.offset);
+                range.collapse(true);
+            }
+        }
+        if (!range) return null;
+
+        var rect = range.getBoundingClientRect();
+        if (!rect.height && range.startContainer.nodeType === 3) {
+            // Some engines give a collapsed caret no height; widen to one character
+            var node = range.startContainer, off = range.startOffset;
+            if (off < node.length) range.setEnd(node, off + 1);
+            else if (off > 0) range.setStart(node, off - 1);
+            rect = range.getBoundingClientRect();
+        }
+        return rect.height ? rect : null;
+    }
+
+    // The line box straddling a horizontal boundary (viewport y), probing at
+    // several x positions and returning the highest match, or null.
+    function cutLineAt(boundary, probeY) {
+        var bodyRect = document.body.getBoundingClientRect();
+        var xs = [
+            bodyRect.left + 2,
+            bodyRect.left + bodyRect.width * 0.25,
+            bodyRect.left + bodyRect.width * 0.5,
+            bodyRect.left + bodyRect.width * 0.75,
+            bodyRect.right - 2
+        ];
+        var best = null;
+        document.documentElement.classList.add('probing');
+        try {
+            for (var i = 0; i < xs.length; i++) {
+                var rect = lineRectAt(xs[i], probeY);
+                if (rect && rect.top < boundary - 0.5 && rect.bottom > boundary + 0.5 &&
+                        (!best || rect.top < best.top)) {
+                    best = rect;
+                }
+            }
+        } finally {
+            document.documentElement.classList.remove('probing');
+        }
+        return best;
+    }
+
+    // Size the footer so its top edge sits on a line boundary, no higher than
+    // maxTop. Returns that edge: the bottom of the visible page.
+    function fitFooter(maxTop) {
+        // A boundary above mid-page would waste half the screen; overlap instead
+        if (maxTop < window.innerHeight * 0.5) maxTop = Infinity;
+        var boundary = Math.min(maxTop, window.innerHeight - footerMinHeight);
+        var rect = cutLineAt(boundary, boundary - 1);
+        // Don't swallow more than half the page for one oversized block
+        if (rect && rect.top >= window.innerHeight * 0.5) {
+            boundary = rect.top;
+        }
+        pageFooter.style.height = (window.innerHeight - boundary) + 'px';
+        return boundary;
+    }
+
+    // Free scrolling (wheel, drag) gets a plain footer again
+    function resetFooter() {
+        pageFooter.style.height = '';
+    }
+
+    // If a line straddles the top edge, scroll up so it starts the page
+    function alignTopToLine() {
+        var rect = cutLineAt(PAGE_TOP, PAGE_TOP + 1);
+        if (rect && rect.top < PAGE_TOP) {
+            window.scrollTo(0, Math.max(0, window.scrollY + rect.top - PAGE_TOP));
+        }
+    }
+
+    function scrollPaged(y) {
+        pagedScrollUntil = Date.now() + 500;
+        window.scrollTo(0, Math.max(0, y));
+    }
+
+    function layoutPage() {
+        fitFooter(Infinity);
+        updatePosition();
+    }
+
+    function pageForward() {
+        var pageBottom = fitFooter(Infinity);
+        var delta = pageBottom - PAGE_TOP;
+        if (delta < window.innerHeight * 0.4) delta = window.innerHeight * 0.9;  // safety net
+        scrollPaged(window.scrollY + delta);
+        layoutPage();
+    }
+
+    function pageBackward() {
+        var start = window.scrollY;
+        if (start <= 0) return;
+
+        // Document position of the first line on the current page; the
+        // previous page must end exactly there so no line falls in the seam.
+        var topRect = cutLineAt(PAGE_TOP, PAGE_TOP + 1);
+        var oldFirstLine = start + (topRect ? topRect.top : PAGE_TOP);
+
+        var target = oldFirstLine - (window.innerHeight - footerMinHeight);
+        if (target <= 0) {
+            scrollPaged(0);
+            layoutPage();
+            return;
+        }
+        scrollPaged(target);
+
+        // A line cut at the top is pushed off this page (it becomes the last
+        // line of the page before), keeping the bottom pinned to the seam.
+        var cut = cutLineAt(PAGE_TOP, PAGE_TOP + 1);
+        if (cut) {
+            scrollPaged(window.scrollY + cut.bottom - PAGE_TOP);
+        }
+        fitFooter(oldFirstLine - window.scrollY);
+        updatePosition();
+    }
+
     function handleScroll(amount) {
-        // Perform the scroll
-        window.scrollBy(0, amount);
+        if (amount >= 0) {
+            pageForward();
+        } else {
+            pageBackward();
+        }
 
         // Track page turns for e-ink refresh (only on Kindle)
         if (isKindle) {
@@ -431,11 +593,15 @@
     var savedProgress = {{ reading_progress }};
 
     function restoreProgress() {
-        if (savedProgress <= 0) return;
-        var scrollableHeight = document.body.scrollHeight - window.innerHeight;
-        if (scrollableHeight > 0) {
-            window.scrollTo(0, scrollableHeight * savedProgress);
+        if (savedProgress > 0) {
+            var scrollableHeight = document.body.scrollHeight - window.innerHeight;
+            if (scrollableHeight > 0) {
+                pagedScrollUntil = Date.now() + 500;
+                window.scrollTo(0, scrollableHeight * savedProgress);
+                alignTopToLine();
+            }
         }
+        layoutPage();
     }
 
     if (document.readyState === 'complete') {
@@ -468,9 +634,11 @@
     }
 
     updatePosition();
-    window.addEventListener('load', updatePosition);
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition);
+    window.addEventListener('resize', layoutPage);
+    window.addEventListener('scroll', function() {
+        if (Date.now() > pagedScrollUntil) resetFooter();
+        updatePosition();
+    });
 
     function sendProgress(useBeacon) {
         var p = Math.min(1, getCurrentProgress()).toFixed(2);
