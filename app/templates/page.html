@@ -63,6 +63,7 @@
             line-height: 1.5;
             font-size: 18px;
             max-width: 600px;
+            padding-bottom: 2.5em;
             background-color: var(--bg-color);
             color: var(--text-color);
             /* E-ink optimizations */
@@ -251,6 +252,19 @@
         .archive-button:hover {
             color: var(--link-hover);
         }
+        .page-footer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 5;
+            padding: 0.3em 1em;
+            font-size: 0.75em;
+            text-align: center;
+            color: var(--meta-color);
+            background-color: var(--bg-color);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -317,6 +331,8 @@
             {% endif %}
         {% endif %}
     </div>
+
+    <div class="page-footer" id="pageFooter"><span id="pagePosition"></span></div>
 
     <script>
     // Device detection
@@ -434,6 +450,27 @@
     function getCurrentProgress() {
         return window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
     }
+
+    // Position indicator: percent read and estimated minutes left
+    var wordCount = {{ word_count }};
+    var WORDS_PER_MINUTE = 238;
+    var pagePosition = document.getElementById('pagePosition');
+
+    function updatePosition() {
+        var scrollableHeight = document.body.scrollHeight - window.innerHeight;
+        var p = scrollableHeight > 0 ? Math.min(1, Math.max(0, getCurrentProgress())) : 1;
+        var text = Math.round(p * 100) + '%';
+        if (wordCount > 0) {
+            var minutesLeft = Math.ceil(wordCount * (1 - p) / WORDS_PER_MINUTE);
+            text += ' \u00b7 ' + minutesLeft + ' min left';
+        }
+        pagePosition.textContent = text;
+    }
+
+    updatePosition();
+    window.addEventListener('load', updatePosition);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition);
 
     function sendProgress(useBeacon) {
         var p = Math.min(1, getCurrentProgress()).toFixed(2);

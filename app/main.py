@@ -237,6 +237,7 @@ async def read_article(
                 "content": clean_html,
                 "is_dark": is_dark,
                 "reading_progress": reading_progress,
+                "word_count": document.get("word_count") or 0,
                 "back_url": back_url,
                 "is_feed": is_feed,
                 "next_url": next_url,
