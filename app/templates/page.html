@@ -564,6 +564,7 @@
         } else {
             pageBackward();
         }
+        saveLocalPosition();
 
         // Track page turns for e-ink refresh (only on Kindle)
         if (isKindle) {
@@ -586,21 +587,102 @@
         flashScreen();
     }
 
-    // Scroll to saved reading progress position.
+    // ---- Local reading position ----
+    // Readwise's reading_progress is a percentage of scroll height, which
+    // shifts whenever fonts, images or the viewport change, and the public
+    // API cannot be written to anyway. So the exact position is kept on the
+    // device as "block N, fraction of the way through it", which survives all
+    // of those; the percentage is kept alongside for comparison and fallback.
+    var POSITION_KEY = 'rkw:pos:{{ doc_id }}';
+    var ANCHOR_SELECTOR = 'p, li, h1, h2, h3, h4, h5, h6, pre, img, table, figcaption, blockquote, dt, dd';
+    var contentRoot = document.querySelector('.content');
+    var anchorList = null;
+
+    function anchors() {
+        if (!anchorList) anchorList = contentRoot.querySelectorAll(ANCHOR_SELECTOR);
+        return anchorList;
+    }
+
+    // The innermost block containing the page's first line, plus how far
+    // into it that line sits; falls back to the next block below the top.
+    function currentAnchor() {
+        var probe = PAGE_TOP + 1;
+        var list = anchors();
+        var containing = -1, containingRect = null, next = -1;
+        for (var i = 0; i < list.length; i++) {
+            var rect = list[i].getBoundingClientRect();
+            if (!rect.height) continue;
+            if (rect.top <= probe && rect.bottom > probe) {
+                containing = i;
+                containingRect = rect;
+            } else if (rect.top > probe) {
+                if (next < 0) next = i;
+                if (containing >= 0 || rect.top > window.innerHeight) break;
+            }
+        }
+        if (containing >= 0) {
+            return {i: containing, r: (probe - containingRect.top) / containingRect.height};
+        }
+        if (next >= 0) return {i: next, r: 0};
+        return null;
+    }
+
+    function saveLocalPosition() {
+        var anchor = currentAnchor();
+        if (!anchor) return;
+        anchor.p = Math.min(1, getCurrentProgress());
+        anchor.t = Date.now();
+        try {
+            localStorage.setItem(POSITION_KEY, JSON.stringify(anchor));
+        } catch (e) { /* storage unavailable or full: percentage still goes to the server */ }
+    }
+
+    function loadLocalPosition() {
+        try {
+            var raw = localStorage.getItem(POSITION_KEY);
+            if (!raw) return null;
+            var pos = JSON.parse(raw);
+            if (typeof pos.i !== 'number' || typeof pos.r !== 'number') return null;
+            return pos;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function scrollToAnchor(pos) {
+        var el = anchors()[pos.i];
+        if (!el) return false;
+        var rect = el.getBoundingClientRect();
+        if (!rect.height) return false;
+        pagedScrollUntil = Date.now() + 500;
+        window.scrollTo(0, Math.max(0, window.scrollY + rect.top + rect.height * pos.r - PAGE_TOP - 1));
+        return true;
+    }
+
+    // Scroll to the saved reading position.
     // Wait for the load event: before web fonts and images have arrived the
-    // document is shorter than its final height, so a percentage computed
+    // document is shorter than its final height, so any position computed
     // against it lands short of where the reader actually stopped.
     var savedProgress = {{ reading_progress }};
 
     function restoreProgress() {
-        if (savedProgress > 0) {
+        var local = loadLocalPosition();
+        var restored = false;
+
+        // The server percentage only wins when something else (the official
+        // app, another device) has clearly read further than this device.
+        if (local && local.p >= savedProgress - 0.02) {
+            restored = scrollToAnchor(local);
+        }
+        if (!restored && savedProgress > 0) {
             var scrollableHeight = document.body.scrollHeight - window.innerHeight;
             if (scrollableHeight > 0) {
                 pagedScrollUntil = Date.now() + 500;
                 window.scrollTo(0, scrollableHeight * savedProgress);
-                alignTopToLine();
+                restored = true;
             }
         }
+        if (restored) alignTopToLine();
         layoutPage();
     }
 
@@ -641,6 +723,8 @@
     });
 
     function sendProgress(useBeacon) {
+        saveLocalPosition();
+
         var p = Math.min(1, getCurrentProgress()).toFixed(2);
         // Only send if progress changed significantly (> 1%)
         if (Math.abs(parseFloat(p) - lastSentProgress) < 0.01) return;
@@ -663,6 +747,9 @@
 
     // Send progress when page is about to unload (navigating away, closing tab)
     window.addEventListener('beforeunload', function() {
+        sendProgress(true);
+    });
+    window.addEventListener('pagehide', function() {
         sendProgress(true);
     });
 
