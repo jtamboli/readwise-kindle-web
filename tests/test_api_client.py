@@ -14,7 +14,9 @@ with patch.dict('os.environ', {'KINDLE_READWISE_API_TOKEN': 'test-token'}):
         list_cache,
         document_cache,
         new_ulid,
+        position_sync_warning,
     )
+    import kindle_reader.api_client as api_client_module
     from kindle_reader.config import Config
 
 
@@ -38,6 +40,14 @@ def mock_response():
             )
         return response
     return _create_response
+
+
+@pytest.fixture(autouse=True)
+def reset_sync_status():
+    """Start each test with the state-sync session not rejected."""
+    api_client_module._session_rejected = False
+    yield
+    api_client_module._session_rejected = False
 
 
 @pytest.fixture(autouse=True)
@@ -401,6 +411,50 @@ class TestSyncReadingPosition:
 
                 with pytest.raises(httpx.HTTPStatusError):
                     await client.sync_reading_position("doc-1", 0.5)
+
+
+class TestPositionSyncWarning:
+    """Tests for the home-list warning about position sync."""
+
+    def test_warns_when_session_unset(self):
+        with patch.object(Config, "KINDLE_READWISE_MOBILE_SESSION", None):
+            assert "KINDLE_READWISE_MOBILE_SESSION is not set" in position_sync_warning()
+
+    def test_silent_when_session_set_and_accepted(self):
+        with patch.object(Config, "KINDLE_READWISE_MOBILE_SESSION", "sess-123"):
+            assert position_sync_warning() is None
+
+    @pytest.mark.asyncio
+    async def test_warns_after_401_until_next_success(self, mock_response):
+        """A rejected session flags the warning; an accepted push clears it."""
+        with patch.object(Config, "KINDLE_READWISE_MOBILE_SESSION", "sess-123"):
+            client = ReadwiseClient()
+            with patch("httpx.AsyncClient") as mock_client_class:
+                mock_async_client = AsyncMock()
+                mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+                mock_async_client.post.return_value = mock_response({}, status_code=401)
+                with pytest.raises(httpx.HTTPStatusError):
+                    await client.sync_reading_position("doc-1", 0.5)
+                assert "rejected (401)" in position_sync_warning()
+
+                mock_async_client.post.return_value = mock_response({})
+                await client.sync_reading_position("doc-1", 0.6)
+                assert position_sync_warning() is None
+
+    @pytest.mark.asyncio
+    async def test_other_errors_do_not_flag_session(self, mock_response):
+        """A 500 is transient, not a bad token, so no session warning."""
+        with patch.object(Config, "KINDLE_READWISE_MOBILE_SESSION", "sess-123"):
+            client = ReadwiseClient()
+            with patch("httpx.AsyncClient") as mock_client_class:
+                mock_async_client = AsyncMock()
+                mock_client_class.return_value.__aenter__.return_value = mock_async_client
+                mock_async_client.post.return_value = mock_response({}, status_code=500)
+
+                with pytest.raises(httpx.HTTPStatusError):
+                    await client.sync_reading_position("doc-1", 0.5)
+                assert position_sync_warning() is None
 
 
 class TestArchiveDocument:

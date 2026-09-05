@@ -48,6 +48,31 @@ def new_ulid() -> str:
     return "".join(reversed(chars))
 
 
+# Set when the state API rejects the session; cleared by the next accepted
+# push. Drives the warning shown on the home list.
+_session_rejected = False
+
+
+def position_sync_warning() -> Optional[str]:
+    """
+    Explain why reading position isn't reaching Readwise, or None if it is.
+
+    Only the position push is affected; reading through the public API
+    keeps working either way.
+    """
+    if not Config.position_sync_enabled():
+        return (
+            "Reading position isn't syncing to Readwise: "
+            "KINDLE_READWISE_MOBILE_SESSION is not set."
+        )
+    if _session_rejected:
+        return (
+            "Reading position isn't syncing to Readwise: the app session was "
+            "rejected (401). Capture a fresh mobilesession token from the Reader app."
+        )
+    return None
+
+
 _STATE_SESSIONS = {
     name: new_ulid()
     for name in ("focusSessionId", "instanceSessionId", "pageSessionId", "windowSessionId")
@@ -324,6 +349,8 @@ class ReadwiseClient:
             doc_id: Document ID
             progress: Reading progress (0.0 to 1.0)
         """
+        global _session_rejected
+
         if not Config.position_sync_enabled():
             return
 
@@ -343,12 +370,14 @@ class ReadwiseClient:
                 timeout=10.0,
             )
             if response.status_code == 401:
+                _session_rejected = True
                 logger.warning(
                     "Readwise rejected the mobile session (401); "
                     "KINDLE_READWISE_MOBILE_SESSION has probably expired and needs re-capturing"
                 )
             response.raise_for_status()
 
+            _session_rejected = False
             logger.info(f"  ← Reading position synced")
 
     async def archive_document(self, doc_id: str):

@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from kindle_reader.config import Config
 from fastapi.templating import Jinja2Templates
 
-from kindle_reader.api_client import client, VALID_LOCATIONS
+from kindle_reader.api_client import client, position_sync_warning, VALID_LOCATIONS
 from kindle_reader.filters import (
     KINDLE_HIDDEN_TAG,
     SORT_OPTIONS,
@@ -158,6 +158,7 @@ async def list_home(request: Request):
                 "is_dark": is_dark,
                 "sort_order": sort_order,
                 "sort_options": SORT_OPTIONS,
+                "sync_warning": position_sync_warning(),
             },
         )
     except Exception as e:
