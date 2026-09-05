@@ -79,6 +79,7 @@ The application will be available at `http://localhost:8000`
 All configuration is done via environment variables:
 
 - `KINDLE_READWISE_API_TOKEN` (required): Your Readwise API token
+- `KINDLE_READWISE_MOBILE_SESSION` (optional): `mobilesession` header captured from the official Reader iOS app. When set, reading position is pushed to Readwise so other devices pick it up. See [Reading Progress](#reading-progress).
 - `KINDLE_CACHE_LIST_TTL` (default: 300): List cache duration in seconds
 
 ## Container Integration
@@ -150,11 +151,16 @@ Articles are displayed as a single scrollable page with **tap-zone navigation**.
 
 ### Reading Progress
 
-Reading progress is updated via **fire-and-forget** async tasks using `asyncio.create_task()`. This means:
+The page beacons its scroll depth to `/kindle/progress/{id}` as you read. The exact position (block + offset) is kept in the device's `localStorage`, and the percentage is cached server-side so the list shows it immediately.
+
+The public Readwise API can read `reading_progress` but not write it, so by default position stays on the device. Set `KINDLE_READWISE_MOBILE_SESSION` to also push it to Readwise through the private state-sync API the official apps use (documented in `docs/readwise-private-state-api.md`). Each beacon then sends two events: the current scroll depth, and a forward-only update to the reading high-water mark that the public API exposes as `reading_progress`. Only the depth percentage is written; the apps' element-based position, which indexes their own DOM, is left untouched.
+
+Pushes are **fire-and-forget** async tasks using `asyncio.create_task()`:
 
 - Page loads aren't blocked waiting for API updates
 - Progress updates happen in the background
-- If an update fails, it doesn't affect your reading experience
+- If an update fails, it's logged and doesn't affect your reading experience
+- A `401` means the captured session has expired; capture a fresh one from the app
 
 ### HTML Sanitization
 

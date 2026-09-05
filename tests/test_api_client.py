@@ -8,9 +8,14 @@ with patch.dict('os.environ', {'KINDLE_READWISE_API_TOKEN': 'test-token'}):
     from kindle_reader.api_client import (
         ReadwiseClient,
         VALID_LOCATIONS,
+        STATE_SCHEMA_VERSION,
+        ULID_ALPHABET,
+        build_position_events,
         list_cache,
         document_cache,
+        new_ulid,
     )
+    from kindle_reader.config import Config
 
 
 @pytest.fixture
@@ -284,7 +289,7 @@ class TestUpdateReadingProgress:
         assert "missing-doc" not in document_cache
 
     def test_makes_no_network_call(self, client):
-        """Progress is local-only; the read-only public API is never called."""
+        """The cache update never touches the network; syncing is a separate step."""
         document_cache["doc-1"] = {"id": "doc-1", "reading_progress": 0.0}
 
         with patch("httpx.AsyncClient") as mock_client_class:
@@ -292,6 +297,110 @@ class TestUpdateReadingProgress:
 
             mock_client_class.assert_not_called()
         assert document_cache["doc-1"]["reading_progress"] == 0.9
+
+
+class TestNewUlid:
+    """Tests for the ULID generator used for state-sync event IDs."""
+
+    def test_shape(self):
+        """26 Crockford base32 characters, unique per call."""
+        a, b = new_ulid(), new_ulid()
+        assert len(a) == 26
+        assert set(a) <= set(ULID_ALPHABET)
+        assert a != b
+
+    def test_sorts_by_time(self):
+        """A later ULID compares greater, so the server sees events in order."""
+        with patch("kindle_reader.api_client.time.time", return_value=1_000_000.0):
+            earlier = new_ulid()
+        with patch("kindle_reader.api_client.time.time", return_value=1_000_001.0):
+            later = new_ulid()
+        assert earlier < later
+
+
+class TestBuildPositionEvents:
+    """Tests for the state-sync events emitted on scroll."""
+
+    def test_emits_scroll_and_high_water_events(self):
+        events = build_position_events("doc-1", 0.4, timestamp_ms=1234)
+
+        assert [e["name"] for e in events] == [
+            "document-scroll-position-updated",
+            "document-progress-position-updated",
+        ]
+        for e in events:
+            assert e["timestamp"] == 1234
+            assert e["userInteraction"] == {"name": "scroll"}
+            assert e["dataUpdates"]["itemsUpdated"] == [{"id": "doc-1", "type": "documents"}]
+            assert e["dataUpdates"]["reversePatch"] == []
+            assert len(e["id"]) == 26 and len(e["correlationId"]) == 26
+            assert e["environment"]["agent"]["category"] == "mobile-app"
+
+    def test_scroll_event_replaces_current_depth(self):
+        scroll, _ = build_position_events("doc-1", 0.4)
+
+        assert scroll["dataUpdates"]["forwardPatch"] == [
+            {"op": "replace", "path": "/documents/doc-1/currentScrollPosition/scrollDepth", "value": 0.4}
+        ]
+
+    def test_high_water_event_is_guarded_forward_only(self):
+        _, high_water = build_position_events("doc-1", 0.4)
+
+        assert high_water["dataUpdates"]["forwardPatch"] == [
+            {"op": "test", "path": "/documents/doc-1/readingPosition/scrollDepth", "value": "<0.4"},
+            {"op": "replace", "path": "/documents/doc-1/readingPosition/scrollDepth", "value": 0.4},
+        ]
+
+
+class TestSyncReadingPosition:
+    """Tests for sync_reading_position method."""
+
+    @pytest.mark.asyncio
+    async def test_noop_without_session(self, client):
+        """Without a captured session the private API is never called."""
+        with patch.object(Config, "KINDLE_READWISE_MOBILE_SESSION", None), \
+                patch("httpx.AsyncClient") as mock_client_class:
+            await client.sync_reading_position("doc-1", 0.5)
+
+            mock_client_class.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_posts_events_with_session_header(self, mock_response):
+        """Should POST the event envelope to the state API using the mobile session."""
+        with patch.object(Config, "KINDLE_READWISE_MOBILE_SESSION", "sess-123"):
+            client = ReadwiseClient()
+            with patch("httpx.AsyncClient") as mock_client_class:
+                mock_async_client = AsyncMock()
+                mock_client_class.return_value.__aenter__.return_value = mock_async_client
+                mock_async_client.post.return_value = mock_response({})
+
+                await client.sync_reading_position("doc-1", 0.5)
+
+                mock_async_client.post.assert_called_once()
+                args, kwargs = mock_async_client.post.call_args
+                assert args[0] == "https://readwise.io/reader/api/state/update"
+                assert kwargs["headers"]["mobilesession"] == "sess-123"
+                assert "Authorization" not in kwargs["headers"]
+                body = kwargs["json"]
+                assert body["schemaVersion"] == STATE_SCHEMA_VERSION
+                assert body["isChunkingSupported"] is True
+                assert [e["name"] for e in body["events"]] == [
+                    "document-scroll-position-updated",
+                    "document-progress-position-updated",
+                ]
+
+    @pytest.mark.asyncio
+    async def test_raises_on_expired_session(self, mock_response):
+        """A 401 propagates so the caller can log that the session needs re-capturing."""
+        with patch.object(Config, "KINDLE_READWISE_MOBILE_SESSION", "sess-123"):
+            client = ReadwiseClient()
+            with patch("httpx.AsyncClient") as mock_client_class:
+                mock_async_client = AsyncMock()
+                mock_client_class.return_value.__aenter__.return_value = mock_async_client
+                mock_async_client.post.return_value = mock_response({}, status_code=401)
+
+                with pytest.raises(httpx.HTTPStatusError):
+                    await client.sync_reading_position("doc-1", 0.5)
 
 
 class TestArchiveDocument:

@@ -12,6 +12,10 @@ services:
       # HTTP Basic Auth; if they are unset the site is publicly readable.
       - key: KINDLE_READWISE_API_TOKEN
         sync: false
+      # Optional: `mobilesession` header captured from the official iOS app.
+      # Enables pushing reading position to Readwise (private state API).
+      - key: KINDLE_READWISE_MOBILE_SESSION
+        sync: false
       - key: BASIC_AUTH_USERNAME
         sync: false
       - key: BASIC_AUTH_PASSWORD

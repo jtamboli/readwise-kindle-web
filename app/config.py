@@ -12,6 +12,13 @@ class Config:
     # Readwise API token (required)
     KINDLE_READWISE_API_TOKEN = os.getenv("KINDLE_READWISE_API_TOKEN")
 
+    # Session token from the official Reader iOS app (optional). The public
+    # API cannot write reading position, so when this is set the reader pushes
+    # position through the private state-sync API the apps use. Capture the
+    # `mobilesession` request header from the app's traffic; see
+    # docs/readwise-private-state-api.md. Leave unset to keep position local.
+    KINDLE_READWISE_MOBILE_SESSION = os.getenv("KINDLE_READWISE_MOBILE_SESSION")
+
     # Cache settings
     KINDLE_CACHE_LIST_TTL = int(os.getenv("KINDLE_CACHE_LIST_TTL", "300"))  # 5 minutes
 
@@ -28,8 +35,14 @@ class Config:
     # Logging settings
     KINDLE_READWISE_VERBOSE = os.getenv("KINDLE_READWISE_VERBOSE", "false").lower() == "true"
 
-    # Readwise API endpoint
+    # Readwise API endpoints
     READWISE_API_BASE = "https://readwise.io/api/v3"
+    READWISE_STATE_API_BASE = "https://readwise.io/reader/api"
+
+    @classmethod
+    def position_sync_enabled(cls):
+        """Reading position is pushed to Readwise only when a session is set."""
+        return bool(cls.KINDLE_READWISE_MOBILE_SESSION)
 
     @classmethod
     def validate(cls):

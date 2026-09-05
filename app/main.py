@@ -1,4 +1,5 @@
 """FastAPI application for Readwise Kindle web reader."""
+import asyncio
 import base64
 import logging
 import random
@@ -33,6 +34,24 @@ TRANSPARENT_GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\
 
 app = FastAPI(title="Readwise Kindle Web Reader")
 router = APIRouter()
+
+# Fire-and-forget tasks keep a strong reference here until they finish, so
+# the event loop can't garbage-collect them mid-flight.
+_background_tasks = set()
+
+
+def schedule_background(coro, description: str):
+    """Run a coroutine without blocking the response; log failures instead of raising."""
+    async def runner():
+        try:
+            await coro
+        except Exception as e:
+            logger.warning(f"Background {description} failed: {e}")
+
+    task = asyncio.create_task(runner())
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    return task
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
 
@@ -264,6 +283,11 @@ async def update_progress(doc_id: str, p: float = 0):
     """
     progress = min(1.0, max(0.0, p))
     client.update_reading_progress(doc_id, progress)
+    if Config.position_sync_enabled():
+        schedule_background(
+            client.sync_reading_position(doc_id, progress),
+            f"position sync for {doc_id}",
+        )
     return Response(content=TRANSPARENT_GIF, media_type="image/gif")
 
 

@@ -1,7 +1,9 @@
 """Async Readwise API client with caching."""
 import asyncio
 import logging
+import secrets
 import sys
+import time
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
 import httpx
@@ -28,6 +30,92 @@ document_cache: Dict[str, Dict] = {}  # No TTL, invalidated manually
 # Valid locations for the API
 VALID_LOCATIONS = {"new", "later", "shortlist", "archive", "feed"}
 
+# Private state-sync API (see docs/readwise-private-state-api.md). Events are
+# shaped like the official iOS app's, which is the client the session token
+# was issued to. Session IDs are minted once per process, as the app does.
+STATE_SCHEMA_VERSION = 10
+STATE_APP_VERSION = "8.18.1"
+ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+
+def new_ulid() -> str:
+    """Mint a ULID: 48-bit millisecond timestamp + 80 random bits, Crockford base32."""
+    value = (int(time.time() * 1000) << 80) | secrets.randbits(80)
+    chars = []
+    for _ in range(26):
+        chars.append(ULID_ALPHABET[value & 31])
+        value >>= 5
+    return "".join(reversed(chars))
+
+
+_STATE_SESSIONS = {
+    name: new_ulid()
+    for name in ("focusSessionId", "instanceSessionId", "pageSessionId", "windowSessionId")
+}
+
+
+def _state_environment() -> Dict:
+    return {
+        "agent": {"category": "mobile-app", "version": STATE_APP_VERSION},
+        "app": {
+            "category": "mobile-app",
+            "commitId": "unknown",
+            "sessions": dict(_STATE_SESSIONS),
+            "version": STATE_APP_VERSION,
+        },
+        "channel": "production",
+        "os": {"name": "ios", "version": "unknown"},
+        "device": {"model": "iPhone", "type": "Handset", "vendor": "Apple"},
+    }
+
+
+def _state_event(name: str, interaction: str, doc_id: str, forward_patch: List[Dict],
+                 timestamp_ms: int) -> Dict:
+    return {
+        "id": new_ulid(),
+        "correlationId": new_ulid(),
+        "name": name,
+        "timestamp": timestamp_ms,
+        "userInteraction": {"name": interaction},
+        "environment": _state_environment(),
+        "dataUpdates": {
+            "forwardPatch": forward_patch,
+            # The apps send the inverse patch for undo; we don't track the
+            # previous value, and the server accepts an empty list.
+            "reversePatch": [],
+            "itemsUpdated": [{"id": doc_id, "type": "documents"}],
+        },
+    }
+
+
+def build_position_events(doc_id: str, progress: float, timestamp_ms: Optional[int] = None) -> List[Dict]:
+    """
+    Build the two events the official apps emit on scroll.
+
+    `currentScrollPosition` is where the reader is looking now and moves both
+    ways. `readingPosition` is the high-water mark the public API exposes as
+    `reading_progress`; its patch is guarded by a `test` op so it never
+    moves backwards. Only `scrollDepth` is written: the apps' element-based
+    `serializedPosition` indexes their own DOM, which this reader can't
+    reproduce, and the apps themselves send depth-only updates.
+    """
+    ts = timestamp_ms if timestamp_ms is not None else int(time.time() * 1000)
+    base = f"/documents/{doc_id}"
+    scroll = _state_event(
+        "document-scroll-position-updated", "scroll", doc_id,
+        [{"op": "replace", "path": f"{base}/currentScrollPosition/scrollDepth", "value": progress}],
+        ts,
+    )
+    high_water = _state_event(
+        "document-progress-position-updated", "scroll", doc_id,
+        [
+            {"op": "test", "path": f"{base}/readingPosition/scrollDepth", "value": f"<{progress}"},
+            {"op": "replace", "path": f"{base}/readingPosition/scrollDepth", "value": progress},
+        ],
+        ts,
+    )
+    return [scroll, high_water]
+
 
 class ReadwiseClient:
     """Async client for Readwise Reader API."""
@@ -36,6 +124,11 @@ class ReadwiseClient:
         self.base_url = Config.READWISE_API_BASE
         self.headers = {
             "Authorization": f"Token {Config.KINDLE_READWISE_API_TOKEN}",
+            "Content-Type": "application/json",
+        }
+        self.state_url = f"{Config.READWISE_STATE_API_BASE}/state/update"
+        self.state_headers = {
+            "mobilesession": Config.KINDLE_READWISE_MOBILE_SESSION or "",
             "Content-Type": "application/json",
         }
 
@@ -207,7 +300,9 @@ class ReadwiseClient:
         Update reading progress for a document locally.
 
         The Readwise public API doesn't support writing reading_progress
-        (it's read-only), so we only update the local cache.
+        (it's read-only), so this only updates the local cache. Pushing the
+        position to Readwise is a separate, network-bound step:
+        sync_reading_position().
 
         Args:
             doc_id: Document ID
@@ -216,6 +311,45 @@ class ReadwiseClient:
         if doc_id in document_cache:
             document_cache[doc_id]["reading_progress"] = progress
             logger.info(f"Updated cached reading progress for {doc_id} to {progress:.1%}")
+
+    async def sync_reading_position(self, doc_id: str, progress: float):
+        """
+        Push reading position to Readwise through the private state-sync API.
+
+        No-op unless KINDLE_READWISE_MOBILE_SESSION is configured. Raises on
+        HTTP errors so the caller decides how loudly to fail; a 401 means the
+        captured session has expired and needs re-capturing.
+
+        Args:
+            doc_id: Document ID
+            progress: Reading progress (0.0 to 1.0)
+        """
+        if not Config.position_sync_enabled():
+            return
+
+        payload = {
+            "events": build_position_events(doc_id, progress),
+            "schemaVersion": STATE_SCHEMA_VERSION,
+            "isChunkingSupported": True,
+        }
+
+        async with httpx.AsyncClient() as client:
+            logger.info(f"  → State API: POST /state/update (position {progress:.1%} for {doc_id})")
+
+            response = await client.post(
+                self.state_url,
+                headers=self.state_headers,
+                json=payload,
+                timeout=10.0,
+            )
+            if response.status_code == 401:
+                logger.warning(
+                    "Readwise rejected the mobile session (401); "
+                    "KINDLE_READWISE_MOBILE_SESSION has probably expired and needs re-capturing"
+                )
+            response.raise_for_status()
+
+            logger.info(f"  ← Reading position synced")
 
     async def archive_document(self, doc_id: str):
         """

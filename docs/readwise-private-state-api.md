@@ -15,6 +15,17 @@ fields. The official apps use this private state sync API instead.
 > private API for seen state. `reading_progress` is still write-only via the
 > private API.
 
+> **Update (2026-09-05):** re-captured from both the web app
+> (read.readwise.io) and the iOS app (v8.18.1). Both hit the same endpoints
+> with the same event shapes; only authentication differs (see below). This
+> reader now writes reading position through this API when
+> `KINDLE_READWISE_MOBILE_SESSION` is set, using the iOS session because it
+> needs a single header and no CSRF cookie. Verified live: a depth-only
+> `document-scroll-position-updated` patch with an empty `reversePatch` is
+> accepted and applied; the `test` guard on
+> `document-progress-position-updated` leaves `readingPosition` untouched
+> when the new depth is not greater, and the request still returns `200 {}`.
+
 ## Endpoints
 
 ### `GET /reader/api/state`
@@ -42,13 +53,30 @@ Pushes state changes to the server.
 
 ## Authentication
 
-Uses session-based auth, not API tokens:
+Uses session-based auth, not API tokens. The public `Authorization: Token`
+header is not accepted here.
 
-| Header | Value |
+**iOS app** (what this reader uses):
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `mobilesession` | 32-char session token | yes |
+| `Cookie` | `uniqueCookie=<id>` | no (verified: omitting it still returns 200) |
+| `User-Agent` | `readermobile/1 CFNetwork/... Darwin/...` | no (default client UA works) |
+
+A wrong `mobilesession` returns `401`.
+
+**Web app** (read.readwise.io, calling readwise.io cross-site):
+
+| Cookie | Value |
 |--------|-------|
-| `mobilesession` | `<session-token>` |
-| `Cookie` | `uniqueCookie=<id>` |
-| `User-Agent` | `readermobile/1 CFNetwork/... Darwin/...` |
+| `rwsessionid` | 32-char Django session |
+| `csrftoken` | 64-char CSRF token |
+| `uniqueCookie` | `<id>` |
+
+The POST carried `Origin: https://read.readwise.io` and
+`Content-Type: text/plain;charset=UTF-8` with no `X-CSRFToken` header. Two
+cookies to keep in sync made this the less attractive option.
 
 ## Request Envelope
 
@@ -70,6 +98,7 @@ Each event in the `events` array:
   "correlationId": "<ULID>",
   "name": "<event-type>",
   "timestamp": 1771639100263,
+  "timezone": "America/New_York",
   "userInteraction": { "name": "scroll" | "unknown" },
   "environment": {
     "agent": { "category": "mobile-app", "version": "7.36.1" },
@@ -174,4 +203,13 @@ Fires when a document is opened or re-opened.
 
 - The `serializedPosition` format (`"N:0"`) appears to be an element
   index within the document's DOM, providing a viewport-independent
-  position that survives font size changes.
+  position that survives font size changes. The 2026-09 captures show a
+  path-like form instead: the web app wrote `"0/14:1"` and `"0/20:259"`,
+  the iOS app `"5/0/30:0"` plus a
+  `mobileSerializedPositionElementVerticalOffset` of `459.39`. The DOM it
+  indexes is the official reader's, so a third-party client can't produce
+  it; this reader writes `scrollDepth` only.
+
+- The web app's `environment.agent.category` is `web-app`, with
+  `app.commitId` set to a git SHA and an extra `browser` block; the iOS app
+  reports `mobile-app` with version `8.18.1`.
